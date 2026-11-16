@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.2.0-beta.1"
+  VERSION: "5.2.0-beta.2"
 };
 window.MIA_PART = 'front';
 window.MIA_SPLIT = true;
@@ -3188,6 +3188,8 @@ const Front = {
     const q = new URLSearchParams(qs || '');
     const line = App.isLine();
     if (line && !parts.length) return App.go('#/book');
+    /* v5.2：入口網址先查目的地再載入網站資料，圖文選單跳轉少等一次後端 */
+    if (parts[0] === 'go') return this.goEntry(root, decodeURIComponent(parts[1] || ''));
     await this.data();
     Sky.mount();
     if (!this._bpBound) { this._bpBound = true; App.onBp(() => { if (location.hash.indexOf('#/admin') !== 0) App.refreshSoft(); }); }
@@ -4670,6 +4672,8 @@ Object.assign(Front, {
 });
 /* ---- front-go.js ---- */
 /* ===================== FRONT 入口網址 #/go/:code（v3） ===================== */
+/* v5.2：舊的塔羅網址（mia-booking/tarot/ 或相對 tarot/）一律改到網站 B（mia-care） */
+const fixCareTo = to => { const m = /^(?:tarot\/|https?:\/\/[^#?]*\/tarot\/?)(?:\?[^#]*)?(#.*)?$/.exec(String(to || '')); return m ? careBase() + (m[1] || '#/') : to; };
 Object.assign(Front, {
   async goEntry(root, code) {
     root.innerHTML = '<div class="go-wait" aria-busy="true"></div>';
@@ -4679,9 +4683,10 @@ Object.assign(Front, {
     Tracker.push('VIEW_PAGE', { meta: { page: 'go', code, src } });
     const go = h => { try { history.replaceState(null, '', location.pathname + location.search + h); } catch (e) { location.hash = h; return; } App.route(); };
     if (x && x.special) return this.startEntry(code, x.special, new URLSearchParams(location.hash.split('?')[1] || '').get('r'));
-    if (x && x.dest && x.dest.kind === 'url') { location.replace(x.dest.to); return; }
+    if (x && x.dest && x.dest.kind === 'url') { location.replace(fixCareTo(x.dest.to)); return; }
     if (x && x.dest && x.dest.kind === 'page') return go(x.dest.to);
     if (!x || x.fallback === 'home') return go('#/');
+    await this.data(); Sky.mount();
     this.mount(root, this.shell(`<section class="sec page-top"><div class="wrap narrow"><div class="empty card">${pl('custom3', '', { glow: .6, lite: 1 })}<h1 class="h-page sm">「${esc(x.name)}」即將開放</h1><p>這個功能正在準備中，開放後會在這裡和你見面。</p><a class="btn pri" href="#/">回到首頁${arrowIc()}</a></div></div></section>`));
   }
 });
