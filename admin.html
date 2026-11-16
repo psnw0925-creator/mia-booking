@@ -4941,7 +4941,7 @@ Object.assign(Admin, {
       if (id !== 'new') { try { ev = (await api.call('adminGetEvent', { eventId: id })).event; } catch (e) { toast('找不到這個活動', 'err'); return App.go('#/admin/events'); } }
       const T = U.today();
       this._evW = ev ? Object.assign(U.clone(ev), { _for: id, sessions: ev.sessions.map(s => Object.assign({}, s)) })
-        : { _for: id, eventId: '', slug: '', title: '', summary: '', intro: '', audience: [], outline: [], cover: { type: 'planet', style: 'custom1', url: '' }, price: 1200, earlyPrice: 0, earlyUntil: '', methods: ['linepay', 'card', 'atm'], regOpen: '', regCloseDays: 1, refundDays: 7, state: 'draft', status: 'draft',
+        : { _for: id, eventId: '', slug: '', title: '', summary: '', intro: '', audience: [], outline: [], cover: { type: 'planet', style: 'custom1', url: '' }, price: 1200, earlyPrice: 0, earlyUntil: '', methods: ['ipass', 'bank'], regOpen: '', regCloseDays: 1, refundDays: 7, state: 'draft', status: 'draft',
           notes: '報名需全額付清，付款完成才保留名額。\n每個 LINE 帳號限報名本人 1 位。\n開課 7 天前可在「我的預約」取消並全額退費；之後不退費，可聯繫 Mia 轉換其他場次一次。',
           sessions: [{ sessionId: '', mode: 'online', lessons: [{ date: U.addDays(T, 14), start: '14:00', end: '16:00' }], capacity: 20, waitlist: true, zoomLink: '', venue: '', city: '', address: '', mapUrl: '', checkin: '', taken: 0 }] };
     }
@@ -5596,10 +5596,11 @@ Object.assign(Admin, {
   }
 });
 
-boot();
 
 /* 後台不含客人頁；其他網址會轉到 index.html */
 const Front = { route() { }, _evP: null, _quizP: null, _quizC: {} };
+/* ---- boot.js ---- */
+boot();
 </script>
 </body>
 </html>
