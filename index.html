@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.1.0-beta.2"
+  VERSION: "5.2.0-beta.1"
 };
 window.MIA_PART = 'front';
 window.MIA_SPLIT = true;
@@ -1476,6 +1476,39 @@ body.front.line .hero { margin-top: -64px; padding-top: 64px; }
 }
 
 
+/* v5.2 最新消息 */
+body.front .nw-list { display: flex; flex-direction: column; gap: 12px; }
+body.front .nw-list.home { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+body.front .nw-card { display: flex; gap: 14px; align-items: center; padding: 14px; text-decoration: none; color: inherit; transition: transform .2s; }
+body.front .nw-card:hover { transform: translateY(-2px); }
+body.front .nw-list.home .nw-card { flex-direction: column; align-items: stretch; }
+body.front .nw-cv { flex: none; width: 76px; height: 76px; border-radius: 14px; overflow: hidden; display: grid; place-items: center; background: linear-gradient(160deg, #EEF4FC, #DCE8F6); }
+body.front .nw-list.home .nw-cv { width: 100%; height: 120px; }
+body.front .nw-cv img { width: 100%; height: 100%; object-fit: cover; }
+body.front .nw-cv .nw-pl { width: 56px; height: 56px; }
+body.front .nw-cv.big { width: 100%; height: 200px; border-radius: 18px 18px 0 0; }
+body.front .nw-cv.big .nw-pl { width: 110px; height: 110px; }
+body.front .nw-tx { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+body.front .nw-tx b { font-size: 16px; line-height: 1.45; color: var(--ink-1, #0F1E3C); }
+body.front .nw-lead { color: var(--ink-3, #6B7A96); font-size: 13px; line-height: 1.6; }
+body.front .nw-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+body.front .nw-meta small { color: var(--ink-3, #6B7A96); }
+body.front .nw-pin { color: #B8925A !important; font-weight: 700; }
+body.front .nw-cat { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+body.front .nw-cat.nc0 { background: #E3ECF8; color: #1F3D78; } body.front .nw-cat.nc1 { background: #F6E7C8; color: #7A5A36; } body.front .nw-cat.nc2 { background: #FCE3EC; color: #A0344F; }
+body.front .nw-cat.nc3 { background: #E6F4EC; color: #2F6B47; } body.front .nw-cat.nc4 { background: #EDE7FB; color: #5B4BA6; } body.front .nw-cat.nc5 { background: #E2F3F6; color: #23707E; }
+body.front .nw-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+body.front .nw-tabs a { padding: 6px 14px; border-radius: 999px; border: 1px solid rgba(31, 61, 120, .18); text-decoration: none; color: var(--ink-2, #2A3F66); font-size: 14px; background: rgba(255, 255, 255, .6); }
+body.front .nw-tabs a.on { background: #1F3D78; color: #fff; border-color: #1F3D78; }
+body.front .nw-art { padding: 0; overflow: hidden; }
+body.front .nw-ab { padding: 22px 24px 26px; display: flex; flex-direction: column; gap: 10px; }
+body.front .nw-body p { margin: 0 0 12px; font-size: 15.5px; line-height: 1.9; color: var(--ink-2, #2A3F66); }
+body.front .nw-body a { color: #1F3D78; word-break: break-all; }
+body.front .nw-btn { margin-top: 6px; }
+body.front .nw-pg .back { display: inline-flex; margin-bottom: 12px; }
+@media (max-width: 760px) { body.front .nw-list.home { grid-template-columns: 1fr; } body.front .nw-list.home .nw-card { flex-direction: row; align-items: center; } body.front .nw-list.home .nw-cv { width: 76px; height: 76px; } body.front .nw-cv.big { height: 160px; } }
+
+
 
 html:has(> body.admin) { background: #F2F7FD; }
 
@@ -2252,9 +2285,9 @@ const evWhen = (s, withYear) => { const ls = (s && s.lessons) || []; if (!ls.len
 const evTimes = s => { const ls = (s && s.lessons) || []; return ls.length > 1 ? ls.map(x => `${U.dot(x.date).slice(5)} ${x.start} – ${x.end}`).join('、') : ls[0] ? `${ls[0].start} – ${ls[0].end}` : ''; };
 const evGcal = (ev, s) => { const f = evFirst(s), z = (d, t) => d.replace(/-/g, '') + 'T' + t.replace(':', '') + '00'; return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(ev.title) + '&dates=' + z(f.date, f.start) + '/' + z(f.date, f.end) + '&ctz=Asia/Taipei&location=' + encodeURIComponent(s.mode === 'onsite' ? [s.venue, s.address].filter(Boolean).join(' ') : 'Zoom 線上'); };
 /* ===== v3 入口網址（/go/代號）：LINE 圖文選單每格貼固定網址，目的地在後台設定（與 Code.gs ENTRY_* 相同） ===== */
-const ENTRY_PAGES = [['#/', '首頁'], ['#/plans', '方案介紹'], ['#/book', '立即預約'], ['#/my', '我的預約'], ['#/my?tab=events', '我的預約・課程'], ['#/events', '課程與活動'], ['#/quiz', '尋找你的星球'], ['#/faq', '常見問題'], ['#/flow', '服務流程'], ['#/notice', '預約須知'], ['#/about', '關於 Mia']];
+const ENTRY_PAGES = [['#/', '首頁'], ['#/plans', '方案介紹'], ['#/book', '立即預約'], ['#/my', '我的預約'], ['#/my?tab=events', '我的預約・課程'], ['#/events', '課程與活動'], ['#/news', '最新消息'], ['#/quiz', '尋找你的星球'], ['#/faq', '常見問題'], ['#/flow', '服務流程'], ['#/notice', '預約須知'], ['#/about', '關於 Mia']];
 const ENTRY_CODE_RE = /^[a-z0-9][a-z0-9-]{1,29}$/, ENTRY_PATH_RE = /^#\/[A-Za-z0-9_\-\/?=&.%]*$/;
-const ENTRY_SEED = [['my', '我的預約', 'page', '#/my'], ['daily', '每日一占', 'none', ''], ['news', '最新消息', 'url', ''], ['service', '服務', 'page', '#/plans'], ['events', '課程／活動', 'page', '#/events'], ['faq', '常見問題', 'page', '#/faq']];
+const ENTRY_SEED = [['my', '我的預約', 'page', '#/my'], ['daily', '每日一占', 'none', ''], ['news', '最新消息', 'page', '#/news'], ['service', '服務', 'page', '#/plans'], ['events', '課程／活動', 'page', '#/events'], ['faq', '常見問題', 'page', '#/faq']];
 /* 目的地：page＝網站頁面、booking＝預約頁（可指定方案）、url＝外部網址、none＝尚未設定 */
 const entryDest = e => { if (!e || !e.enabled) return null; if (e.destType === 'page' && ENTRY_PATH_RE.test(e.destPage || '')) return { kind: 'page', to: e.destPage }; if (e.destType === 'tarot') return { kind: 'url', to: careBase() + (ENTRY_PATH_RE.test(e.destPage || '') ? e.destPage : '#/') }; if (e.destType === 'booking' && e.special && e.special.on) return { kind: 'page', to: '#/book?entry=' + encodeURIComponent(e.code) }; if (e.destType === 'booking') return { kind: 'page', to: e.planId ? '#/book?plan=' + encodeURIComponent(e.planId) : '#/book' }; if (e.destType === 'url' && /^https:\/\/\S+$/.test(e.destUrl || '')) return { kind: 'url', to: e.destUrl }; return null; };
 const entryLink = (site, e) => (site || '') + (e.group === 'line-menu' ? '?from=line&src=line-menu' : '?src=' + e.code) + '#/go/' + e.code;
@@ -2438,7 +2471,7 @@ const DEFAULT_SETTINGS = {
   'rules.defaultDeposit': 1000, 'rules.depositDueHours': 24, 'rules.balanceDueDays': 1, 'rules.rescheduleLimit': 1, 'rules.rescheduleMinDays': 3,
   'rules.noShowLimit': 2, 'rules.lateMinutes': 10, 'rules.companionDays': 14, 'rules.topicMax': 300,
   'pay.mode': 'split', 'pay.order': 'bank,ipass,jkopay,card', 'pay.ipass.enabled': true, 'pay.ipass.bankCode': '391', 'pay.ipass.accountNo': '0000002542343084', 'pay.ipass.accountName': '',
-  'pay.jkopay.bankCode': '396', 'pay.jkopay.accountNo': '902910264', 'pay.ecpayCard.enabled': false, 'pay.ecpayAtm.enabled': false, 'tarot.dailyMax': 5, 'pay.bank.enabled': true, 'pay.bank.bankName': '', 'pay.bank.bankCode': '', 'pay.bank.accountName': '', 'pay.bank.accountNo': '',
+  'pay.jkopay.bankCode': '396', 'pay.jkopay.accountNo': '902910264', 'pay.ecpayCard.enabled': false, 'pay.ecpayAtm.enabled': false, 'tarot.dailyMax': 5, 'news.categories': '公告,課程活動,優惠,療癒小語,問答,遊戲', 'news.homeEnabled': true, 'news.homeCount': 3, 'pay.bank.enabled': true, 'pay.bank.bankName': '', 'pay.bank.bankCode': '', 'pay.bank.accountName': '', 'pay.bank.accountNo': '',
   'pay.gateway.sandbox': true, 'pay.linepay.enabled': false, 'pay.linepay.url': '', 'pay.card.enabled': false, 'pay.card.url': '', 'pay.jkopay.enabled': false, 'pay.jkopay.url': '',
   'tracking.enabled': true, 'logs.archiveAfterDays': 90, 'logs.lastArchiveAt': '', 'list.pageSize': 50, 'text.heroTitle': '把說不清的困擾，\n帶進一次對話', 'text.heroSub': 'Mia 透過 Zoom 引導冥想，陪你探索內在感受。'
 };
@@ -3169,6 +3202,7 @@ const Front = {
       case 'report': if (SPLIT) { location.replace(careUrl() + '#/report/' + encodeURIComponent(parts[1] || '')); return; } return !FEAT('report') ? this.soonPage(root, '總結報告線上查看') : authed ? this.reportPage(root, decodeURIComponent(parts[1] || '')) : toLogin();
       case 'go': return this.goEntry(root, decodeURIComponent(parts[1] || ''));
       case 'events': return parts[1] === 'done' ? (authed ? this.evDone(root, parts[2]) : toLogin()) : parts[2] === 'register' ? this.evRegister(root, decodeURIComponent(parts[1]), q) : parts[1] ? this.evDetail(root, decodeURIComponent(parts[1]), q) : this.evList(root, q);
+      case 'news': return parts[1] ? this.newsPage(root, decodeURIComponent(parts[1])) : this.newsList(root, q.get('c') || '');
       case 'flow': return this.flowPage(root);
       case 'notice': return this.noticePage(root);
       case 'about': return this.aboutPage(root);
@@ -3203,6 +3237,7 @@ const Front = {
     const it = [['#/plans', '方案介紹', 'plans']];
     if (this.quizOn()) it.push(['#/quiz', '尋找你的星球', 'quiz']);
     if (this.evOn()) it.push(['#/events', '課程活動', 'events']);
+    it.push(['#/news', '最新消息', 'news']);
     it.push(['#/flow', '服務流程', 'flow'], ['#/notice', '預約須知', 'notice']);
     if (this.faqOn()) it.push(['#/faq', '常見問題', 'faq']);
     it.push(['#/my', '我的預約', 'my']);
@@ -3298,12 +3333,14 @@ const Front = {
       items = [{ icon: 'planet', label: '方案介紹', sub: '五種方案的內容與適合情境', href: '#/plans' }];
       if (this.quizOn()) items.push({ icon: 'quiz', label: '尋找你的星球', sub: '找到目前最適合自己的療癒方案', href: '#/quiz' });
       if (this.evOn()) items.push({ icon: 'star', label: '課程與活動', sub: '線上 Zoom 與現場課程', href: '#/events' });
+      items.push({ icon: 'bell', label: '最新消息', sub: '公告、課程活動與優惠', href: '#/news' });
       if (this.faqOn()) items.push({ icon: 'faq', label: '常見問題', sub: '預約、付款與陪伴期', href: '#/faq' });
       items.push({ icon: 'cal', label: '我的預約', sub: '查看、改期與回填付款', href: '#/my' });
       const back = this.lineReturnUrl(); if (back) items.push({ icon: 'ext', label: '返回 LINE', sub: '回到 Mia 官方 LINE', href: back });
       items[0].sub = this.fill(items[0].sub.replace('五種', '{方案數}種'));
     } else {
       items = [{ icon: 'route', label: '服務流程', sub: '服務當天的進行方式', href: '#/flow' }, { icon: 'doc', label: '預約須知', sub: `${this.full() ? '付款' : '訂金'}、改期與預約前提醒`, href: '#/notice' }];
+      items.push({ icon: 'bell', label: '最新消息', sub: '公告、課程活動與優惠', href: '#/news' });
       if (this.faqOn()) items.push({ icon: 'chat', label: '常見問題', sub: '預約、付款與陪伴期', href: '#/faq' });
       items.push({ icon: 'heart', label: '關於 Mia', sub: about ? about.slice(0, 18) + (about.length > 18 ? '…' : '') : '服務原則與承諾', href: '#/about' });
     }
@@ -3420,6 +3457,7 @@ const Front = {
         ${this.t('plans.quizHint') ? `<p class="hint-line">${esc(this.t('plans.quizHint'))}${this.quizOn() ? `<a class="tlink sm" href="#/quiz">尋找你的星球${ic('right')}</a>` : ''}</p>` : ''}
       </div></section>
       ${this.evHomeSec()}
+      ${this.newsHomeSec()}
 
       ${this.quizOn() ? `<section class="sec quiz-sec" data-sec="quiz"><div class="wrap"><div class="qcard card">
         <div class="qc-tx"><h2>${esc(this.t('quiz.title'))}</h2><p>${esc(this.t('quiz.homeSub'))}</p><div class="qc-b"><a class="btn pri" href="${this.quizHref()}">開始尋找${arrowIc()}</a><a class="tlink" href="#/plans">直接看全部方案${ic('right')}</a></div></div>
@@ -3464,7 +3502,7 @@ const Front = {
       ${this.ctaBand()}
     `, { cls: 'home' });
     this.mount(root, html, r => {
-      this.bindPlans(r); this.evHomeBind(r);
+      this.bindPlans(r); this.evHomeBind(r); this.newsHomeBind(r);
       if (this.quizOn()) this.loadQuiz().then(q => {
         const box = r.querySelector('[data-qprev]'); if (!box || !q || !q.questions || !q.questions[0]) { if (box) box.remove(); return; }
         const q1 = q.questions[0];
@@ -4589,6 +4627,47 @@ Object.assign(Front, {
   }
 });
 
+/* ---- front-news.js ---- */
+/* ===================== v5.2 最新消息（網站 A） ===================== */
+const newsBodyHTML = t => String(t || '').replace(/\r/g, '').split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, '<br>').replace(/(https:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')}</p>`).join('');
+const newsCatCls = c => 'nc' + (Math.abs([...String(c)].reduce((a, ch) => a + ch.charCodeAt(0), 0)) % 6);
+Object.assign(Front, {
+  newsHomeSec() { return `<section class="sec news-sec" data-sec="news"><div class="wrap">${this.secHead('最新消息', '公告、課程活動與療癒小語')}<div data-newshome><div class="skel" style="height:120px"></div></div><p class="hint-line"><a class="tlink sm" href="#/news">看全部消息${ic('right')}</a></p></div></section>`; },
+  newsHomeBind(r) {
+    const box = r.querySelector('[data-newshome]'); if (!box) return;
+    api.call('getNews', { home: true }).then(x => { if (!x.homeEnabled || !(x.items || []).length) { box.closest('section').remove(); return; } box.innerHTML = `<div class="nw-list home">${x.items.map(n => this.newsCard(n)).join('')}</div>`; paintPlanets(box); })
+      .catch(() => { const s = box.closest('section'); if (s) s.remove(); });
+  },
+  newsCover(n, cls) { const c = n.cover || {}; return c.type === 'image' && c.url ? `<span class="nw-cv ${cls || ''}"><img src="${esc(c.url)}" alt="" loading="lazy"></span>` : `<span class="nw-cv pl-cv ${cls || ''}">${pl(c.style || 'custom1', 'nw-pl', { glow: .8, ring: true })}</span>`; },
+  newsCard(n) {
+    const lead = String(n.body || '').replace(/\s+/g, ' ').trim();
+    return `<a class="nw-card card" href="#/news/${esc(n.newsId)}">${this.newsCover(n)}<span class="nw-tx"><span class="nw-meta"><span class="nw-cat ${newsCatCls(n.category)}">${esc(n.category)}</span><small class="num">${U.dot(String(n.publishAt).slice(0, 10)).slice(5)}</small>${n.pinned ? '<small class="nw-pin">置頂</small>' : ''}</span><b>${esc(n.title)}</b><small class="nw-lead">${esc(lead.slice(0, 60))}${lead.length > 60 ? '⋯' : ''}</small></span></a>`;
+  },
+  async newsList(root, cat) {
+    this.view('news', 'VIEW_PAGE', { meta: { page: 'news' } });
+    const x = await api.call('getNews', cat ? { category: cat } : {}), all = await (cat ? api.call('getNews', {}) : Promise.resolve(x));
+    const cats = all.categories || [];
+    const html = this.shell(`<section class="sec page-top nw-pg"><div class="wrap narrow">
+      ${this.pageHead('最新消息', 'Mia 的公告、課程活動、優惠與更多')}
+      ${cats.length > 1 ? `<div class="seg nw-tabs" role="tablist"><a role="tab" class="${!cat ? 'on' : ''}" href="#/news">全部</a>${cats.map(c => `<a role="tab" class="${c === cat ? 'on' : ''}" href="#/news?c=${encodeURIComponent(c)}">${esc(c)}</a>`).join('')}</div>` : ''}
+      ${x.items.length ? `<div class="nw-list">${x.items.map(n => this.newsCard(n)).join('')}</div>` : `<div class="empty card">${pl('custom2', '', { glow: .6, lite: 1 })}目前還沒有消息，歡迎先加入官方 LINE，有新消息會第一時間通知你。</div>`}
+    </div></section>`, { cls: 'news' });
+    this.mount(root, html);
+  },
+  async newsPage(root, id) {
+    let n; try { n = (await api.call('getNewsItem', { newsId: id })).news; } catch (e) { if (e.code === 'NOT_FOUND') { toast(e.message, 'err'); return App.go('#/news'); } throw e; }
+    this.view('news-' + id, 'VIEW_PAGE', { meta: { page: 'news', id } });
+    const t = n.btnTarget, btn = t && n.btnLabel ? (/^https:\/\//.test(t) ? `<a class="btn pri" href="${esc(t)}" target="_blank" rel="noopener">${esc(n.btnLabel)}${arrowIc()}</a>` : `<a class="btn pri" href="${esc(t)}">${esc(n.btnLabel)}${arrowIc()}</a>`) : '';
+    const html = this.shell(`<section class="sec page-top nw-pg"><div class="wrap narrow">
+      <a class="tlink sm back" href="#/news">${ic('left')}最新消息</a>
+      <article class="card nw-art">${this.newsCover(n, 'big')}
+        <div class="nw-ab"><p class="nw-meta"><span class="nw-cat ${newsCatCls(n.category)}">${esc(n.category)}</span><small class="num">${U.dot(String(n.publishAt).slice(0, 10))}</small></p>
+        <h1 class="h-page sm">${esc(n.title)}</h1><div class="nw-body">${newsBodyHTML(n.body)}</div>${btn ? `<div class="nw-btn">${btn}</div>` : ''}</div></article>
+      <p class="c"><a class="tlink sm" href="#/news">看其他消息${ic('right')}</a></p>
+    </div></section>`, { cls: 'news' });
+    this.mount(root, html);
+  }
+});
 /* ---- front-go.js ---- */
 /* ===================== FRONT 入口網址 #/go/:code（v3） ===================== */
 Object.assign(Front, {
