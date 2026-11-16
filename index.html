@@ -4677,7 +4677,10 @@ const fixCareTo = to => { const m = /^(?:tarot\/|https?:\/\/[^#?]*\/tarot\/?)(?:
 Object.assign(Front, {
   async goEntry(root, code) {
     root.innerHTML = '<div class="go-wait" aria-busy="true"></div>';
-    let x = null; try { x = await api.call('openEntry', { code }); } catch (e) { if (e.code !== 'ENTRY_NOT_FOUND') throw e; }
+    /* v5.2：記住目的地（同一支手機 12 小時內再點同一格，不用等後端；只記一般網頁目的地） */
+    const ck = 'mia.go.' + code, fresh = async () => { let r = null; try { r = await api.call('openEntry', { code }); } catch (e) { if (e.code !== 'ENTRY_NOT_FOUND') throw e; } try { if (r && r.dest && !r.special && !IS_DEMO) localStorage.setItem(ck, JSON.stringify({ at: Date.now(), x: r })); else localStorage.removeItem(ck); } catch (e) { } return r; };
+    let x = null, hit = null; try { const c = JSON.parse(localStorage.getItem(ck) || 'null'); if (c && c.x && c.x.dest && Date.now() - c.at < 12 * 3600e3) hit = c.x; } catch (e) { }
+    if (hit) { x = hit; if (x.dest.kind === 'page') fresh().catch(() => { }); } else x = await fresh();
     const src = new URLSearchParams(location.search).get('src') || '';
     if (src) U.ss.set('mia.src', src);
     Tracker.push('VIEW_PAGE', { meta: { page: 'go', code, src } });
