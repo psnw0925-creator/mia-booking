@@ -2961,7 +2961,11 @@ body.admin .ev-wl { display: grid; gap: 6px; } body.admin .ev-wl li { display: f
 <script>
 /* ---- core.js ---- */
 /* ===================== Core utilities (shared by UI and MockBackend) ===================== */
-const TZ = (window.MIA_CONFIG && MIA_CONFIG.TIMEZONE) || 'Asia/Taipei';
+const TZ = (window.MIA_CONFIG = {
+  GAS_URL: "https://script.google.com/macros/s/AKfycbysIRy8D2qUnUsToIvLoIEew-NrcFW7TdZvHi9ZqsMSQUX-SOeNYZ0S8KTefu8HKJO2Ng/exec",
+  LINE_LOGIN_CHANNEL_ID: "31ce95fe07ba9327202b1d29966dd44",
+  SITE_URL: "https://psnw0925-creator.github.io/mia-booking/",
+  LINE_OA_ID: "@923uxnos", && MIA_CONFIG.TIMEZONE) || 'Asia/Taipei';
 const WD = ['日', '一', '二', '三', '四', '五', '六'];
 const U = {
   esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); },
