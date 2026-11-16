@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.1.0-beta.1"
+  VERSION: "5.1.0-beta.2"
 };
 window.MIA_PART = 'front';
 window.MIA_SPLIT = true;
@@ -4534,6 +4534,7 @@ Object.assign(Front, {
       : ['bad', '名額已釋出', '付款時間已過，名額已釋出。可以回到活動頁重新報名。'];
     const html = this.shell(`<section class="sec page-top ev-pg"><div class="wrap narrow"><div class="ev-done card">
       <span class="ev-dico ${head[0]}">${ic(head[0] === 'ok' ? 'check' : head[0] === 'wait' ? 'clock' : 'warn')}</span><h1 class="h-page sm">${head[1]}</h1><p>${head[2]}</p>
+      ${tr && open && !reported && rg.rejectedRef ? `<p class="note warn">${ic('warn')}<span>Mia 沒有查到末五碼 <b class="num">${esc(rg.rejectedRef)}</b> 的款項，請確認轉帳是否完成、末五碼是否正確，再重新填寫。</span></p>` : ''}
       ${tr && open ? `<div class="ev-atm"><small>轉帳到</small><b>${esc(atm.label || 'iPASS MONEY')}</b><small>${rg.method === 'bank' ? '銀行代碼' : '代碼'}</small><b class="num">${esc(atm.bank)}</b><small>帳號</small><b class="num">${esc(atm.account)}</b>${atm.accountName ? `<small>戶名</small><b>${esc(atm.accountName)}</b>` : ''}<small>金額</small><b class="num">${U.money(rg.amount)}</b><button class="btn ghost sm" data-copy="${esc(atm.account)}">${ic('copy')}複製帳號</button></div>
         <form class="ev-ref" data-evref><label class="fld"><span class="lbl"><span>${reported ? '修改' : '轉帳後填寫'}付款帳號末五碼</span></span><input class="inp num" name="ref" inputmode="numeric" maxlength="5" placeholder="例如 83214" value="${esc(rg.payRef || '')}"></label><button class="btn pri" type="submit">${reported ? '更新末五碼' : '送出末五碼'}</button></form>` : ''}
       ${atm && !tr && (st === 'HOLD' || st === 'OFFER') ? `<div class="ev-atm"><small>銀行代碼</small><b class="num">${esc(atm.bank)}</b><small>轉帳帳號</small><b class="num">${esc(atm.account)}</b><small>金額</small><b class="num">${U.money(rg.amount)}</b><button class="btn ghost sm" data-copy="${esc(atm.account)}">${ic('copy')}複製帳號</button></div>` : ''}
