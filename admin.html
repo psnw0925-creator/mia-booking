@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.2.0-beta.1"
+  VERSION: "5.2.0-beta.2"
 };
 window.MIA_PART = 'admin';
 window.MIA_SPLIT = true;
@@ -305,6 +305,7 @@ body:not(.front) .sky-host { display: none; }
 }
 @keyframes f-drift { 0% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(var(--dx), var(--dy), 0) scale(1.08); } 100% { transform: translate3d(calc(var(--dx) * -.6), calc(var(--dy) * -1), 0) scale(.96); } }
 .sky-host canvas.sky { position: fixed; left: 0; top: 0; }
+
 
 
 
@@ -3173,10 +3174,19 @@ const Admin = {
     catch (e) { if (e.code === 'FORBIDDEN') { Session.setUser(Object.assign({}, u, { isAdmin: false })); return App.go('#/admin/login'); } throw e; }
   },
 
+  /* v5.2：試算表裡「前台網址／網站 B 網址」是空的時候，用這個網站的設定自動補上（付款、LINE 通知按鈕、圖文選單都要用） */
+  fillUrls(S) {
+    if (IS_DEMO || this._urlFilled) return; this._urlFilled = true;
+    const o = {}, ok = u => /^https:\/\/\S+$/.test(u || '');
+    if (!ok(S['site.url']) && ok(CFG.SITE_URL)) o['site.url'] = CFG.SITE_URL;
+    if (!ok(S['care.url']) && ok(CFG.CARE_URL)) o['care.url'] = CFG.CARE_URL;
+    if (Object.keys(o).length) api.call('adminSaveSettings', { settings: o }).then(() => { App.cfg = null; }).catch(() => { this._urlFilled = false; });
+  },
+
   /* ---------- payment mode (Settings pay.mode: 'split' 兩段式 | 'full' 一次付清; default split) ---------- */
   async payMode(force) {
     if (force || !this._pm || Date.now() - this._pmAt > 10000) {
-      try { const { settings: S } = await api.call('adminGetSettings'); this._pm = S['pay.mode'] === 'full' ? 'full' : 'split'; this._feat = { tarot: !!S['feature.tarot'] && S['feature.tarot'] !== 'FALSE', report: !!S['feature.report'] && S['feature.report'] !== 'FALSE' }; } catch (e) { this._pm = this._pm || 'split'; }
+      try { const { settings: S } = await api.call('adminGetSettings'); this.fillUrls(S); this._pm = S['pay.mode'] === 'full' ? 'full' : 'split'; this._feat = { tarot: !!S['feature.tarot'] && S['feature.tarot'] !== 'FALSE', report: !!S['feature.report'] && S['feature.report'] !== 'FALSE' }; } catch (e) { this._pm = this._pm || 'split'; }
       this._pmAt = Date.now();
     }
     return this._pm;
