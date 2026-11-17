@@ -24,11 +24,13 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.2.0-beta.2"
+  VERSION: "5.3.0-beta.2"
 };
 window.MIA_PART = 'front';
 window.MIA_SPLIT = true;
 </script>
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;600;700&family=Cormorant+Garamond:wght@500;600&display=swap">
@@ -1889,6 +1891,7 @@ body.front .pk-price { font-size: 14px; }
 body.front .btn.line { background: var(--line-green); color: #fff; border-color: transparent; }
 body.front .hint-line.sm { font-size: 13px; margin-top: 8px; }
 
+
 </style>
 </head>
 <body class="front">
@@ -2545,7 +2548,28 @@ const Session = {
   setUser(u, a) { const s = this.get(a); if (s) { s.user = u; this.set(s, a); } }
 };
 
+/* v5.3：先用上次的資料顯示、背景再更新（只用在公開、可以晚 1–2 秒更新的頁面） */
+const API_FRESH = {};
 const api = {
+  swrKey(action, data) { const u = Session.user() || {}; return 'mia.c.' + action + ':' + JSON.stringify(data || {}) + ':' + (u.lineUserId || ''); },
+  cached(action, data) {
+    if (IS_DEMO) return null;
+    let c = null; try { c = JSON.parse(localStorage.getItem(this.swrKey(action, data)) || 'null'); } catch (e) { }
+    return c && c.v === (CFG.VERSION || '') && Date.now() - c.at < 7 * 864e5 ? c.d : null;
+  },
+  fresh(action, data, force) {
+    const k = this.swrKey(action, data), f = API_FRESH[k];
+    if (f && !force && Date.now() - f.at < 60000) return f.p;
+    const p = this.call(action, data).then(r => { if (!IS_DEMO) { try { localStorage.setItem(k, JSON.stringify({ v: CFG.VERSION || '', at: Date.now(), d: r })); } catch (e) { } } return r; }).catch(e => { delete API_FRESH[k]; throw e; });
+    API_FRESH[k] = { p, at: Date.now() }; return p;
+  },
+  swr(action, data, onFresh) {
+    const c = this.cached(action, data);
+    if (!c) return this.fresh(action, data);
+    const old = JSON.stringify(c);
+    this.fresh(action, data).then(r => { const ch = JSON.stringify(r) !== old; if (onFresh) onFresh(r, ch); else if (ch) App.refreshSoft(); }).catch(() => { });
+    return Promise.resolve(c);
+  },
   async call(action, data) {
     const token = Session.token();
     try {
@@ -2766,8 +2790,23 @@ const App = {
     this._bpSubs.slice().forEach(f => { try { f(b); } catch (e) { console.error(e); } });
   },
   bodyClass(area) { return area + (this.isLine() ? ' line' : '') + ' bp-' + this.bp(); },
-  async loadCfg(force) { if (!this.cfg || force) this.cfg = await api.call('getConfig'); return this.cfg; },
-  async loadSite(force) { if (!this.site || force) this.site = await api.call('getSiteContent'); return this.site; },
+  /* v5.3：公開頁面先用上次的設定與內容（背景更新）；預約、付款、我的預約等頁面一律等最新的 */
+  swrOk() { if (location.hash.indexOf('#/admin') === 0) return false; const h = (location.hash || '#/').slice(2).split('?')[0].split('/').filter(Boolean), p = h[0] || ''; return ['', 'plans', 'news', 'faq', 'go'].includes(p) || ((p === 'events' || p === 'quiz') && h.length <= 2 && h[2] === undefined && !(p === 'quiz' && h.length === 2)); },
+  async loadOne(k, action, force) {
+    const st = this._stale || (this._stale = {});
+    if (!force && this[k] && !(st[k] && !this.swrOk())) return this[k];
+    if (!force && !this[k] && this.swrOk()) {
+      const hit = api.cached(action, {});
+      if (hit) {
+        this[k] = hit; st[k] = true;
+        api.fresh(action, {}).then(r => { const ch = JSON.stringify(r) !== JSON.stringify(this[k]); this[k] = r; st[k] = false; if (ch && this.swrOk()) this.refreshSoft(); }).catch(() => { });
+        return hit;
+      }
+    }
+    this[k] = await api.fresh(action, {}, force || !this.swrOk()); st[k] = false; return this[k];
+  },
+  async loadCfg(force) { return this.loadOne('cfg', 'getConfig', force); },
+  async loadSite(force) { return this.loadOne('site', 'getSiteContent', force); },
   loadAll(force) { return Promise.all([this.loadCfg(force), this.loadSite(force)]); },
   reload() { this.cfg = null; this.site = null; return this.route(); },
   async route() {
@@ -2818,7 +2857,8 @@ async function boot() {
   document.body.className = App.bodyClass(location.hash.indexOf('#/admin') === 0 ? 'admin' : 'front');
   mountDemoBadge();
   if (!IS_DEMO) await LineAuth.handleReturn();
-  if (Session.token()) { try { const r = await api.call('authMe'); Session.setUser(r.user); } catch (e) { } }
+  if (Session.token()) { const me = api.call('authMe').then(r => Session.setUser(r.user)).catch(() => { }); if (!Session.user()) await me; }   /* v5.3：記得的登入資料先用，身分確認在背景進行 */
+  if (location.hash.indexOf('#/admin') !== 0 && App.swrOk()) App.loadAll().catch(() => { });   /* v5.3：網站設定與內容提早一起問，不排隊 */
   if (IS_DEMO) { try { MOCK.runScheduler(); } catch (e) { } setInterval(() => { try { MOCK.runScheduler(); } catch (e) { } }, 60000); }
   if (App.isLine() && !U.ss.get('mia.lineEntered')) { U.ss.set('mia.lineEntered', '1'); Tracker.push('LINE_ENTER'); }
   App.route();
@@ -4400,7 +4440,7 @@ Object.assign(Front, {
 /* ===================== FRONT 課程與活動（v3：E1–E4） ===================== */
 Object.assign(Front, {
   evOn() { return ((this.site || {}).events || {}).count > 0; },
-  loadEvents(force) { if (!this._evP || force) this._evP = api.call('getEvents').catch(e => { this._evP = null; throw e; }); return this._evP; },
+  loadEvents(force) { if (!this._evP || force) this._evP = (force ? api.fresh('getEvents', {}, true) : api.swr('getEvents', {}, (r, ch) => { this._evP = Promise.resolve(r); if (ch && App.swrOk()) App.refreshSoft(); })).catch(e => { this._evP = null; throw e; }); return this._evP; },
   evCover(ev, cls) { const c = ev.cover || {}; return c.type === 'image' && c.url ? `<span class="ev-cv ${cls || ''}"><img src="${esc(c.url)}" alt="" loading="lazy"></span>` : `<span class="ev-cv pl-cv ${cls || ''}" data-cvs="${esc(c.style || 'custom1')}">${pl(c.style || 'custom1', 'ev-pl', { glow: .9, ring: true })}</span>`; },
   evTag(s) { return `<span class="ev-mode ${s.mode === 'onsite' ? 'on' : 'ol'}">${esc(s.modeLabel || evModeLabel(s))}</span>`; },
   evSeat(s) { const st = s.state; return st === 'open' ? `<span class="ev-st ok">報名中${s.left <= 6 ? `・剩 ${s.left} 位` : ''}</span>` : st === 'waitlist' ? '<span class="ev-st warn">額滿・可候補</span>' : st === 'soon' ? '<span class="ev-st info">即將開放報名</span>' : `<span class="ev-st gray">${esc(s.stateLabel)}</span>`; },
@@ -4424,7 +4464,7 @@ Object.assign(Front, {
   /* ---------- #/events 列表 ---------- */
   async evList(root, q) {
     this.view('events', 'VIEW_PAGE', { meta: { page: 'events' } });
-    const x = await this.loadEvents(true), all = x.items || [];
+    const x = await api.swr('getEvents', {}, (r, ch) => { this._evP = Promise.resolve(r); if (ch && App.swrOk()) App.refreshSoft(); }), all = x.items || [];
     const mode = q.get('mode') || '', mon = q.get('m') || '';
     const months = Array.from(new Set(all.map(e => (e.next && e.next.lessons[0] ? e.next.lessons[0].date.slice(0, 7) : '')).filter(Boolean))).sort();
     const list = all.filter(e => (!mode || e.modes.includes(mode)) && (!mon || (e.next && e.next.lessons[0] && e.next.lessons[0].date.slice(0, 7) === mon)));
@@ -4440,7 +4480,7 @@ Object.assign(Front, {
 
   /* ---------- #/events/:slug 詳情 ---------- */
   async evDetail(root, slug, q) {
-    let ev; try { ev = (await api.call('getEvent', { slug })).event; } catch (e) { if (e.code === 'EVENT_NOT_FOUND') return this.evGone(root); throw e; }
+    let ev; try { ev = (await api.swr('getEvent', { slug })).event; } catch (e) { if (e.code === 'EVENT_NOT_FOUND') return this.evGone(root); throw e; }
     this.view('ev:' + slug, 'VIEW_PAGE', { meta: { page: 'event', eventId: ev.eventId } });
     const ss = ev.sessions.filter(s => !s.cancelled && s.state !== 'ended');
     const pick = ss.find(s => s.sessionId === q.get('s')) || ss.find(s => s.state === 'open') || ss.find(s => s.state === 'waitlist') || ss[0];
@@ -4637,7 +4677,7 @@ Object.assign(Front, {
   newsHomeSec() { return `<section class="sec news-sec" data-sec="news"><div class="wrap">${this.secHead('最新消息', '公告、課程活動與療癒小語')}<div data-newshome><div class="skel" style="height:120px"></div></div><p class="hint-line"><a class="tlink sm" href="#/news">看全部消息${ic('right')}</a></p></div></section>`; },
   newsHomeBind(r) {
     const box = r.querySelector('[data-newshome]'); if (!box) return;
-    api.call('getNews', { home: true }).then(x => { if (!x.homeEnabled || !(x.items || []).length) { box.closest('section').remove(); return; } box.innerHTML = `<div class="nw-list home">${x.items.map(n => this.newsCard(n)).join('')}</div>`; paintPlanets(box); })
+    api.swr('getNews', { home: true }).then(x => { if (!x.homeEnabled || !(x.items || []).length) { box.closest('section').remove(); return; } box.innerHTML = `<div class="nw-list home">${x.items.map(n => this.newsCard(n)).join('')}</div>`; paintPlanets(box); })
       .catch(() => { const s = box.closest('section'); if (s) s.remove(); });
   },
   newsCover(n, cls) { const c = n.cover || {}; return c.type === 'image' && c.url ? `<span class="nw-cv ${cls || ''}"><img src="${esc(c.url)}" alt="" loading="lazy"></span>` : `<span class="nw-cv pl-cv ${cls || ''}">${pl(c.style || 'custom1', 'nw-pl', { glow: .8, ring: true })}</span>`; },
@@ -4647,7 +4687,7 @@ Object.assign(Front, {
   },
   async newsList(root, cat) {
     this.view('news', 'VIEW_PAGE', { meta: { page: 'news' } });
-    const x = await api.call('getNews', cat ? { category: cat } : {}), all = await (cat ? api.call('getNews', {}) : Promise.resolve(x));
+    const x = await api.swr('getNews', cat ? { category: cat } : {}), all = await (cat ? api.swr('getNews', {}) : Promise.resolve(x));
     const cats = all.categories || [];
     const html = this.shell(`<section class="sec page-top nw-pg"><div class="wrap narrow">
       ${this.pageHead('最新消息', 'Mia 的公告、課程活動、優惠與更多')}
@@ -4657,7 +4697,7 @@ Object.assign(Front, {
     this.mount(root, html);
   },
   async newsPage(root, id) {
-    let n; try { n = (await api.call('getNewsItem', { newsId: id })).news; } catch (e) { if (e.code === 'NOT_FOUND') { toast(e.message, 'err'); return App.go('#/news'); } throw e; }
+    let n; try { n = (await api.swr('getNewsItem', { newsId: id })).news; } catch (e) { if (e.code === 'NOT_FOUND') { toast(e.message, 'err'); return App.go('#/news'); } throw e; }
     this.view('news-' + id, 'VIEW_PAGE', { meta: { page: 'news', id } });
     const t = n.btnTarget, btn = t && n.btnLabel ? (/^https:\/\//.test(t) ? `<a class="btn pri" href="${esc(t)}" target="_blank" rel="noopener">${esc(n.btnLabel)}${arrowIc()}</a>` : `<a class="btn pri" href="${esc(t)}">${esc(n.btnLabel)}${arrowIc()}</a>`) : '';
     const html = this.shell(`<section class="sec page-top nw-pg"><div class="wrap narrow">
