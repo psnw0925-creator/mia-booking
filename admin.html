@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.2.0-beta.3"
+  VERSION: "5.3.0-beta.1"
 };
 window.MIA_PART = 'admin';
 window.MIA_SPLIT = true;
@@ -1692,7 +1692,7 @@ body.admin .tf-row .t { display: flex; flex-direction: column; gap: 2px; } body.
 body.admin .tf-row .ex { color: var(--ink-2, #4E6487); font-size: 13px; line-height: 1.6; }
 body.admin .tf-row .a { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 body.admin .tf-row.done .n { background: #2F6B47; color: #fff; } body.admin .tf-row.now { border: 2px solid #1F3D78; background: #F3F7FD; } body.admin .tf-row.now .n { background: #1F3D78; color: #fff; }
-body.admin .tf-ft { margin-top: 12px; font-size: 12.5px; }
+body.admin .tf-ft { margin-top: 12px; font-size: 12.5px; } body.admin .tf-row.br { border-style: dashed; }
 @media (max-width: 900px) { body.admin .tf-row { grid-template-columns: 34px 1fr; } body.admin .tf-row .ex, body.admin .tf-row .a { grid-column: 2; justify-content: flex-start; } }
 body.admin .nw-c small { display: block; color: var(--ink-3); font-size: 12px; margin-top: 2px; } body.admin .nw-cat { display: inline-flex; padding: 0 8px; border-radius: 999px; background: #E3ECF8; color: #1F3D78; font-weight: 700; font-size: 11px; margin-right: 4px; }
 body.admin .nw-th { width: 44px; height: 44px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: linear-gradient(160deg, #EEF4FC, #DCE8F6); flex: none; } body.admin .nw-th img { width: 100%; height: 100%; object-fit: cover; } body.admin .nw-th .nw-tpl { width: 34px; height: 34px; }
@@ -5754,67 +5754,60 @@ Object.assign(Admin, {
   }
 });
 /* ---- admin-test.js ---- */
-/* ===================== v5.2 後台・設定 › 流程測試（時間軸快轉；設計稿第 20 排） ===================== */
-const TEST_STEPS = [
-  ['建立測試預約', '', '名單上有一筆「測試」預約（訂金視為已付）'],
-  ['服務完成・陪伴期開始', 'done', '手機收到「陪伴期開始」；網站 B 出現「我的陪伴」；陪伴後台今日陪伴出現「24 小時關心」'],
-  ['快轉到第 3 天', 'ff', '陪伴後台出現「72 小時關心」；我的陪伴進度到第 3 天'],
-  ['快轉到第 7 天 20:00', 'ff', '手機收到「服務後第 7 天・全能量代碼」→ 用代碼抽牌（先深呼吸引導）→ 陪伴後台「待解讀」寫解讀'],
-  ['總結報告', 'link', '上傳或撰寫報告後按發送 → 手機收到「報告已完成」→ 打開、下載、我已收到、填回饋'],
-  ['快轉 3 天・報告未確認', 'ff', '手機收到「報告提醒」（已按「我已收到」就不會送，這也是正確結果）'],
-  ['快轉到陪伴期結束', 'ff', '手機收到「陪伴期結束」；我的陪伴顯示已結束；陪伴後台移到更早的名單'],
-  ['快轉到下載期限後', 'ff', '網站 B 報告頁顯示「下載期限已過」，下載按鈕關閉']
-];
+/* ===================== v5.3 預約後台・設定 › 流程測試（網站 A：預約到服務完成；設計稿第 21 排） ===================== */
+const TEST_A = {
+  create: ['建立測試預約（待付訂金）', '手機收到「預約已建立」與付款資訊'],
+  deposit: ['付訂金 → 確認訂金', '手機在「我的預約」回填末五碼 → 這裡按「確認訂金」→ 手機收到「訂金已確認」'],
+  pre: ['快轉到服務前 3 天 20:00', '手機收到「行前提醒」（含 Zoom 連結；測試預約用測試連結）'],
+  day: ['快轉到服務當天・開始前 2 小時', '手機收到「當日提醒」'],
+  done: ['服務完成', '手機收到「陪伴期開始」；之後的陪伴、報告請到網站 B 陪伴後台的「流程測試」']
+};
 Object.assign(Admin, {
   async test(root) {
-    const x = await api.call('adminTestState'), b = x.booking, P = x.prereq || {};
-    const warns = [];
-    if (!P.customer) warns.push('你的 LINE 帳號還沒有「客人」紀錄：請先用手機在網站 A 用 LINE 登入一次。');
-    if (!P.report) warns.push('總結報告線上交付還沒開放（第 4、5、7 站需要）：請到陪伴後台開放。');
-    if (!P.tarot) warns.push('塔羅功能還沒開放（第 3 站需要）：請到陪伴後台開放。');
-    else if (!P.postTpl) warns.push('「服務後第 7 天・全能量代碼」通知是關閉的（第 3 站需要）：請到「通知訊息」打開。');
-    const warnHTML = warns.length ? `<p class="note warn">${ic('warn')}<span>${warns.map(U.esc).join('<br>')}</span></p>` : '';
-    const intro = `<p class="note info">${ic('sparkle')}<span>這裡會建立一筆<b>只給你自己的測試預約</b>。每按一次「快轉」，只把這一筆的服務日期往前移，再用系統排程同樣的條件送出通知；真實客人與系統時間都不受影響。電腦按按鈕，手機用 LINE 當客人看結果。LINE 訊息會真的送到你的 LINE（完整一輪約 6–8 則）。</span></p>`;
+    const x = await api.call('adminTestState', { site: 'a' }), b = x.booking, P = x.prereq || {};
+    const warn = P.customer ? '' : `<p class="note warn">${ic('warn')}<span>你的 LINE 帳號還沒有「客人」紀錄：請先用手機在網站 A 用 LINE 登入一次。</span></p>`;
+    const intro = `<p class="note info">${ic('sparkle')}<span>這裡測<b>網站 A：從預約到服務完成</b>。會建立一筆<b>只給你自己的測試預約</b>，每按一次「快轉」只移動這一筆的日期，再用系統排程同樣的條件送出通知；真實客人與系統時間都不受影響。電腦按按鈕，手機用 LINE 當客人。服務完成之後的陪伴與報告，請到網站 B 陪伴後台的「流程測試」。</span></p>`;
+    const planSel = `<label class="fld"><span class="lbl">方案</span><select class="inp" data-tplan>${(x.plans || []).map(p => `<option value="${U.esc(p.planId)}">${U.esc(p.name)}</option>`).join('')}</select></label>`;
+    const od = x.overdue;
+    const odRow = `<li class="tf-row br ${od ? 'done' : ''}"><span class="n num">＋</span><span class="t"><b>另一條路：訂金逾期未付</b>${od ? `<small>${od.status === 'CANCELLED' ? '已自動取消' : U.esc(od.status)}</small>` : ''}</span><span class="ex">另建一筆待付訂金 → 快轉到付款期限後 → 系統自動取消、釋出時段</span><span class="a">${od ? '<span class="chip ok sm">完成</span>' : ''}<button class="btn ghost sm" data-tover ${P.customer ? '' : 'disabled'}>${od ? '重跑' : '開始'}</button></span></li>`;
+    const clearBtn = `<button class="btn ghost sm" data-tclear>${ic('x')}<span>清除測試資料</span></button>`;
     if (!b) {
-      const html = this.shell({ title: '流程測試' }, `${intro}${warnHTML}
+      const html = this.shell({ title: '流程測試', pri: od ? clearBtn : '' }, `${intro}${warn}
         <section class="card tf-new"><div class="cb">
           <h3>建立測試預約</h3>
-          <p class="muted">日期是今天，用你的 LINE 帳號，訂金直接視為已付，名單上標「測試」。同一時間只有一筆。</p>
-          <label class="fld"><span class="lbl">方案</span><select class="inp" data-tplan>${(x.plans || []).map(p => `<option value="${U.esc(p.planId)}">${U.esc(p.name)}</option>`).join('')}</select></label>
+          <p class="muted">服務日先設在 5 天後，狀態是「待付訂金」，用你的 LINE 帳號，名單上標「測試」。同一時間只有一筆。</p>
+          ${planSel}
           <button class="btn pri" data-tcreate ${P.customer ? '' : 'disabled'}>${ic('plus')}建立測試預約</button>
-        </div></section>`);
-      return this.mount(root, html, r => {
-        r.querySelector('[data-tcreate]').addEventListener('click', async e => { e.currentTarget.disabled = true; try { await api.call('adminTestRun', { op: 'create', planId: (r.querySelector('[data-tplan]') || {}).value }); toast('已建立測試預約', 'ok'); this.rerender(); } catch (er) { errToast(er); e.currentTarget.disabled = false; } });
-      });
+        </div></section>
+        <ol class="tf-list">${odRow}</ol>`);
+      return this.mount(root, html, r => this.testBind(r));
     }
-    const D = x.done || [], cur = D.findIndex(v => !v), now = cur < 0 ? 8 : cur;
-    const tarotAdmin = SPLIT ? careUrl() + 'admin.html#/admin/tarot' : '#/admin/tarot/pending';
-    const act = (i, k) => {
-      if (i === 0) return '<span class="chip ok sm">完成</span>';
-      if (i === 1) return D[1] ? '<span class="chip ok sm">完成</span>' : `<button class="btn pri sm" data-tstep="1">標記完成</button>`;
-      if (i === 4) return `${D[4] ? '<span class="chip ok sm">已發送</span>' : ''}<a class="btn ${D[4] ? 'ghost' : 'pri'} sm" href="#/admin/companions/${U.esc(b.bookingId)}">打開這一筆的報告</a>`;
-      const lock = !D[1] || ((i === 5 || i === 7) && !D[4]);
-      const extra = i === 3 && D[3] ? `<a class="btn ghost sm" href="${U.esc(tarotAdmin)}" ${SPLIT ? 'target="_blank" rel="noopener"' : ''}>打開待解讀</a>` : '';
-      const ack = i === 5 && x.report && x.report.ackAt;
-      if (ack) return '<span class="chip ok sm">已確認收到・不送提醒</span>';
-      return `${D[i] ? '<span class="chip ok sm">完成</span>' : ''}${extra}<button class="btn ${D[i] ? 'ghost' : i === now ? 'pri' : 'ghost'} sm" data-tstep="${i}" ${lock ? 'disabled' : ''}>${D[i] ? '重跑這一站' : '快轉'}</button>`;
+    const st = x.steps || [], cur = st.findIndex(v => !v.done), now = cur < 0 ? 99 : cur;
+    const act = (s, i) => {
+      if (s.key === 'create') return '<span class="chip ok sm">完成</span>';
+      const lbl = { deposit: '確認訂金', done: '標記完成' }[s.key] || '快轉';
+      const lock = i > now || (s.key !== 'deposit' && !st[1].done) || (s.key === 'day' && !st[2].done);
+      if (s.done && (s.key === 'deposit' || s.key === 'done' || st[4].done)) return '<span class="chip ok sm">完成</span>';
+      return `${s.done ? '<span class="chip ok sm">完成</span>' : ''}<button class="btn ${!s.done && i === now ? 'pri' : 'ghost'} sm" data-tstep="${s.key}" ${lock || (st[4].done && !s.done) ? 'disabled' : ''}>${s.done ? '重跑這一站' : lbl}</button>`;
     };
-    const info = i => i === 3 && x.post ? `<small>代碼 <b class="num">${U.esc(x.post.code)}</b>・${x.post.readingId ? '已抽牌' : '等你用手機抽牌'}</small>` : i === 4 && x.report && x.report.sentAt ? `<small>${x.report.ackAt ? '客人已確認收到' : '等客人按「我已收到」'}</small>` : i === 7 && x.report && x.report.until ? `<small>下載期限 ${U.esc(U.tsLabel(x.report.until))}</small>` : '';
-    const rows = TEST_STEPS.map((s, i) => `<li class="tf-row ${D[i] ? 'done' : ''} ${i === now ? 'now' : ''}"><span class="n num">${i}</span><span class="t"><b>${s[0]}</b>${info(i)}</span><span class="ex">${s[2]}</span><span class="a">${act(i, s[1])}</span></li>`).join('');
-    const html = this.shell({ title: '流程測試', pri: `<button class="btn ghost sm" data-tclear>${ic('x')}<span>清除測試資料</span></button>` }, `${intro}${warnHTML}
-      <section class="card tf-bk"><div class="cb"><span class="chip warn sm">測試</span><b>${U.esc(b.name)}</b><span>${U.esc(b.planName)}・服務日 <span class="num">${U.dot(b.date).slice(5)}</span>${x.day > 0 ? `（已快轉 ${x.day} 天）` : '（今天）'}</span><span class="muted tf-q">LINE 已送 <b class="num">${x.sent || 0}</b> 則</span></div></section>
-      <ol class="tf-list">${rows}</ol>
-      <p class="muted tf-ft">快轉只移動這一筆測試預約的日期；第 4 站請在報告頁上傳或撰寫後按「發送」，再回來繼續。</p>`);
-    this.mount(root, html, r => {
-      r.querySelectorAll('[data-tstep]').forEach(btn => btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        try { const o = await api.call('adminTestRun', { op: 'step', step: +btn.dataset.tstep }); toast(o.msg || '已完成', 'ok'); this.rerender(); } catch (er) { errToast(er); btn.disabled = false; }
-      }));
-      r.querySelectorAll('[data-tclear]').forEach(cb => cb.addEventListener('click', async () => {
-        if (!await confirmBox('清除測試資料', '<p>會刪除這筆測試預約，以及它的全能量代碼、占卜、總結報告與檔案。<b>刪除後無法復原。</b></p><p class="muted">已送出的 LINE 訊息不會收回。</p>', '確認清除', true)) return;
-        try { await api.call('adminTestRun', { op: 'clear' }); toast('已清除測試資料', 'ok'); this.rerender(); } catch (er) { errToast(er); }
-      }));
-    });
+    const rows = st.map((s, i) => `<li class="tf-row ${s.done ? 'done' : ''} ${i === now ? 'now' : ''}"><span class="n num">${i}</span><span class="t"><b>${TEST_A[s.key][0]}</b>${s.info ? `<small>${U.esc(s.info)}</small>` : ''}</span><span class="ex">${TEST_A[s.key][1]}</span><span class="a">${act(s, i)}</span></li>`).join('');
+    const dd = x.daysToService, when = dd > 0 ? `（${dd} 天後）` : dd === 0 ? '（今天）' : `（${-dd} 天前）`;
+    const html = this.shell({ title: '流程測試', pri: clearBtn }, `${intro}${warn}
+      <section class="card tf-bk"><div class="cb"><span class="chip warn sm">測試</span><b>${U.esc(b.name)}</b><span>${U.esc(b.planName)}・服務日 <span class="num">${U.dot(b.date).slice(5)} ${U.esc(b.startTime || '')}</span>${when}</span><span class="muted tf-q">LINE 已送 <b class="num">${x.sent || 0}</b> 則</span></div></section>
+      <ol class="tf-list">${rows}${odRow}</ol>
+      <p class="muted tf-ft">快轉只移動這一筆測試預約的日期與時間；「另一條路」會另外建一筆，不影響上面這筆。</p>`);
+    this.mount(root, html, r => this.testBind(r));
+  },
+  testBind(r) {
+    const go = async (btn, data, ok) => { btn.disabled = true; try { const o = await api.call('adminTestRun', Object.assign({ site: 'a' }, data)); toast(o.msg || ok || '已完成', 'ok'); this.rerender(); } catch (er) { errToast(er); btn.disabled = false; } };
+    const plan = () => (r.querySelector('[data-tplan]') || {}).value || '';
+    r.querySelectorAll('[data-tcreate]').forEach(b => b.addEventListener('click', () => go(b, { op: 'create', planId: plan() }, '已建立測試預約')));
+    r.querySelectorAll('[data-tover]').forEach(b => b.addEventListener('click', () => go(b, { op: 'overdue', planId: plan() })));
+    r.querySelectorAll('[data-tstep]').forEach(b => b.addEventListener('click', () => go(b, { op: 'step', step: b.dataset.tstep })));
+    r.querySelectorAll('[data-tclear]').forEach(cb => cb.addEventListener('click', async () => {
+      if (!await confirmBox('清除測試資料', '<p>會刪除網站 A 的測試預約（包含「訂金逾期未付」那一筆）。<b>刪除後無法復原。</b></p><p class="muted">已送出的 LINE 訊息不會收回；網站 B 的測試資料不受影響。</p>', '確認清除', true)) return;
+      try { await api.call('adminTestRun', { site: 'a', op: 'clear' }); toast('已清除測試資料', 'ok'); this.rerender(); } catch (er) { errToast(er); }
+    }));
   }
 });
 
