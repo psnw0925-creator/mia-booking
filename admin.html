@@ -24,11 +24,13 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.3.0-beta.1"
+  VERSION: "5.4.0-beta.1"
 };
 window.MIA_PART = 'admin';
 window.MIA_SPLIT = true;
 </script>
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;600;700&family=Cormorant+Garamond:wght@500;600&display=swap">
@@ -875,6 +877,8 @@ body.admin .wrow.off b { color: var(--ink-3); }
 body.admin .ranges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 body.admin .rg { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 4px 0 8px; border-radius: 10px; background: #F4F8FD; border: 1px solid var(--line); font-size: 13px; }
 body.admin .rg input { width: 50px; border: 0; background: transparent; font-weight: 600; text-align: center; }
+body.admin .ov-rgs { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; } body.admin .rg.ovr input { width: 104px; } body.admin .ov-pv { display: flex; flex-direction: column; gap: 4px; } body.admin .modal .mlist { margin: 6px 0 10px; padding-left: 18px; line-height: 1.8; } body.admin .modal .dn { color: #A0482F; } body.admin .ov .tlink { margin-left: auto; }
+body.admin .cu-tag { display: inline-flex; height: 18px; align-items: center; padding: 0 7px; margin-left: 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: #F6E7C8; color: #7A5A36; vertical-align: 1px; } body.admin .tpl-add { display: flex; align-items: center; justify-content: center; gap: 6px; width: calc(100% - 8px); margin: 6px 4px 4px; padding: 9px; border-radius: 10px; border: 1.5px dashed #9FB4D6; color: var(--a-blue, #1F3D78); font-weight: 700; font-size: 13px; background: transparent; } body.admin .tpl-fold { display: flex; justify-content: space-between; width: 100%; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #F4F7FB; color: var(--ink-2); font-size: 13px; } body.admin .tpl-offs { margin-top: 6px; } body.admin .cu-ed { display: grid; gap: 12px; padding: 12px; margin-bottom: 12px; border-radius: 12px; background: #FFFBF1; border: 1px solid #E8D9B5; } body.admin .cu-pick { display: grid; gap: 8px; } body.admin .cu-op { display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); cursor: pointer; } body.admin .cu-op small { display: block; color: var(--ink-3); font-size: 12px; } body.admin .cu-op .cu-body { margin-top: 2px; }
 body.admin .rg .x { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--ink-3); }
 body.admin .rg .x .i { width: 14px; height: 14px; }
 body.admin .addr { width: 36px; height: 36px; border-radius: 10px; border: 1px dashed #A9C8EC; color: var(--deep-2); display: grid; place-items: center; }
@@ -2203,6 +2207,7 @@ const SALE_LABEL = { on: ['上架中', 'ok'], scheduled: ['排程中', 'info'], 
 const VAR_SCOPE_LABEL = { site: '網站內容・方案內容・常見問題', notify: '通知訊息' };
 /* 檢查一段文字裡的變數：errors 會擋下儲存（打錯名稱、括號不成對、用錯地方）；infos 只提醒（舊名稱） */
 function varCheck(text, scope, tplKey) {
+  if (/^CU_/.test(tplKey || '')) tplKey = 'PRE_REMINDER';   /* v5.4：自訂通知用諮詢預約的變數 */
   const out = { errors: [], infos: [] }; const s = String(text == null ? '' : text); if (s.indexOf('{') < 0 && s.indexOf('}') < 0) return out;
   const defs = VAR_DEFS[scope] || [];
   const okHere = d => !d.only || d.only.indexOf(tplKey || '') >= 0;
@@ -2370,7 +2375,28 @@ const Session = {
   setUser(u, a) { const s = this.get(a); if (s) { s.user = u; this.set(s, a); } }
 };
 
+/* v5.3：先用上次的資料顯示、背景再更新（只用在公開、可以晚 1–2 秒更新的頁面） */
+const API_FRESH = {};
 const api = {
+  swrKey(action, data) { const u = Session.user() || {}; return 'mia.c.' + action + ':' + JSON.stringify(data || {}) + ':' + (u.lineUserId || ''); },
+  cached(action, data) {
+    if (IS_DEMO) return null;
+    let c = null; try { c = JSON.parse(localStorage.getItem(this.swrKey(action, data)) || 'null'); } catch (e) { }
+    return c && c.v === (CFG.VERSION || '') && Date.now() - c.at < 7 * 864e5 ? c.d : null;
+  },
+  fresh(action, data, force) {
+    const k = this.swrKey(action, data), f = API_FRESH[k];
+    if (f && !force && Date.now() - f.at < 60000) return f.p;
+    const p = this.call(action, data).then(r => { if (!IS_DEMO) { try { localStorage.setItem(k, JSON.stringify({ v: CFG.VERSION || '', at: Date.now(), d: r })); } catch (e) { } } return r; }).catch(e => { delete API_FRESH[k]; throw e; });
+    API_FRESH[k] = { p, at: Date.now() }; return p;
+  },
+  swr(action, data, onFresh) {
+    const c = this.cached(action, data);
+    if (!c) return this.fresh(action, data);
+    const old = JSON.stringify(c);
+    this.fresh(action, data).then(r => { const ch = JSON.stringify(r) !== old; if (onFresh) onFresh(r, ch); else if (ch) App.refreshSoft(); }).catch(() => { });
+    return Promise.resolve(c);
+  },
   async call(action, data) {
     const token = Session.token();
     try {
@@ -2591,8 +2617,23 @@ const App = {
     this._bpSubs.slice().forEach(f => { try { f(b); } catch (e) { console.error(e); } });
   },
   bodyClass(area) { return area + (this.isLine() ? ' line' : '') + ' bp-' + this.bp(); },
-  async loadCfg(force) { if (!this.cfg || force) this.cfg = await api.call('getConfig'); return this.cfg; },
-  async loadSite(force) { if (!this.site || force) this.site = await api.call('getSiteContent'); return this.site; },
+  /* v5.3：公開頁面先用上次的設定與內容（背景更新）；預約、付款、我的預約等頁面一律等最新的 */
+  swrOk() { if (location.hash.indexOf('#/admin') === 0) return false; const h = (location.hash || '#/').slice(2).split('?')[0].split('/').filter(Boolean), p = h[0] || ''; return ['', 'plans', 'news', 'faq', 'go'].includes(p) || ((p === 'events' || p === 'quiz') && h.length <= 2 && h[2] === undefined && !(p === 'quiz' && h.length === 2)); },
+  async loadOne(k, action, force) {
+    const st = this._stale || (this._stale = {});
+    if (!force && this[k] && !(st[k] && !this.swrOk())) return this[k];
+    if (!force && !this[k] && this.swrOk()) {
+      const hit = api.cached(action, {});
+      if (hit) {
+        this[k] = hit; st[k] = true;
+        api.fresh(action, {}).then(r => { const ch = JSON.stringify(r) !== JSON.stringify(this[k]); this[k] = r; st[k] = false; if (ch && this.swrOk()) this.refreshSoft(); }).catch(() => { });
+        return hit;
+      }
+    }
+    this[k] = await api.fresh(action, {}, force || !this.swrOk()); st[k] = false; return this[k];
+  },
+  async loadCfg(force) { return this.loadOne('cfg', 'getConfig', force); },
+  async loadSite(force) { return this.loadOne('site', 'getSiteContent', force); },
   loadAll(force) { return Promise.all([this.loadCfg(force), this.loadSite(force)]); },
   reload() { this.cfg = null; this.site = null; return this.route(); },
   async route() {
@@ -2643,7 +2684,8 @@ async function boot() {
   document.body.className = App.bodyClass(location.hash.indexOf('#/admin') === 0 ? 'admin' : 'front');
   mountDemoBadge();
   if (!IS_DEMO) await LineAuth.handleReturn();
-  if (Session.token()) { try { const r = await api.call('authMe'); Session.setUser(r.user); } catch (e) { } }
+  if (Session.token()) { const me = api.call('authMe').then(r => Session.setUser(r.user)).catch(() => { }); if (!Session.user()) await me; }   /* v5.3：記得的登入資料先用，身分確認在背景進行 */
+  if (location.hash.indexOf('#/admin') !== 0 && App.swrOk()) App.loadAll().catch(() => { });   /* v5.3：網站設定與內容提早一起問，不排隊 */
   if (IS_DEMO) { try { MOCK.runScheduler(); } catch (e) { } setInterval(() => { try { MOCK.runScheduler(); } catch (e) { } }, 60000); }
   if (App.isLine() && !U.ss.get('mia.lineEntered')) { U.ss.set('mia.lineEntered', '1'); Tracker.push('LINE_ENTER'); }
   App.route();
@@ -3950,7 +3992,7 @@ const Admin = {
     AUI.drawer(`
       <header class="dw-h"><div><h3>${U.esc(b.name)}<span class="num">・${U.esc(b.bookingId)}</span></h3><small class="num">${U.dateLabel(b.date, true)} ${b.startTime} – ${b.endTime}</small></div><span class="st ${b.statusClass}">${b.statusLabel}</span><button class="x" data-dx aria-label="關閉">${ic('x')}</button></header>
       <div class="dw-b">
-        ${H ? `<div class="dw-acts">${['UNPAID', 'CHECKING'].includes(b.status) ? `<button class="btn pri sm" data-dep="${id}">${this.full() ? '確認付款' : '確認訂金'}</button>` : ''}${b.balanceStatus === 'CHECKING' ? `<button class="btn pri sm" data-bal="${id}">確認尾款</button>` : ''}${['CONFIRMED', 'LINK_SENT'].includes(b.status) ? `<button class="btn ghost sm" data-link="${id}">寄送連結</button><button class="btn ghost sm" data-dn>標記完成</button><button class="btn ghost sm" data-ns>標記未出席</button>` : ''}<button class="btn ghost sm" data-rs>改期</button><button class="btn ghost sm" data-ed>編輯</button><button class="btn danger sm" data-cc>取消</button></div>` : ''}
+        ${H ? `<div class="dw-acts">${['UNPAID', 'CHECKING'].includes(b.status) ? `<button class="btn pri sm" data-dep="${id}">${this.full() ? '確認付款' : '確認訂金'}</button>` : ''}${b.balanceStatus === 'CHECKING' ? `<button class="btn pri sm" data-bal="${id}">確認尾款</button>` : ''}${['CONFIRMED', 'LINK_SENT'].includes(b.status) ? `<button class="btn ghost sm" data-link="${id}">寄送連結</button><button class="btn ghost sm" data-dn>標記完成</button><button class="btn ghost sm" data-ns>標記未出席</button>` : ''}<button class="btn ghost sm" data-rs>改期</button><button class="btn ghost sm" data-ed>編輯</button>${b.lineUserId ? '<button class="btn ghost sm" data-cusend>傳送訊息</button>' : ''}<button class="btn danger sm" data-cc>取消</button></div>` : ''}
         <section class="dw-card"><h4>預約內容</h4><dl class="kv">${'<dt>方案</dt><dd>' + AUI.tagPlan(b.planStyle, b.planName) + '</dd>'}<dt>手機</dt><dd class="num">${U.esc(b.phone)}</dd><dt>IG</dt><dd>${b.ig ? '@' + U.esc(b.ig) : '—'}</dd><dt>LINE</dt><dd>${c ? U.esc(c.displayName) + (c.isFriend ? '・已加入好友' : '・未加入好友') : '未綁定'}</dd><dt>主題</dt><dd class="long">${U.esc(b.topic) || '—'}</dd><dt>期待改變</dt><dd class="long">${U.esc(b.expectChange) || '—'}</dd><dt>來源</dt><dd>${U.esc(b.sourceLabel || '未標記')}${b.firstSource && b.firstSource !== b.source ? `<small class="dw-sub">首次來源：${U.esc(b.firstSourceLabel)}</small>` : ''}</dd>${b.adminNote ? `<dt>內部備註</dt><dd>${U.esc(b.adminNote)}</dd>` : ''}</dl></section>
         ${b.tarot || b.tarotText ? `<section class="dw-card tr-dw"><h4>占卜結果</h4>${b.tarot && b.tarot.spread === 'full' ? this.trFullSnap(b.tarot) : b.tarot ? `<p class="tr-dm">${U.esc(TAROT_TOPICS[b.tarot.topic] || '')}・${U.esc((TAROT_SPREADS[b.tarot.spread] || {}).n || '')}・<span class="num">${U.esc(b.tarot.id)}・${U.tsLabel(b.tarot.createdAt).slice(5)}</span></p><p class="tr-dq">${U.esc(b.tarot.question)}</p>${b.tarot.spread === 'ab' ? `<p class="tr-dm">A：${U.esc(b.tarot.optA)}　B：${U.esc(b.tarot.optB)}</p>` : ''}<div class="tr-mini">${tarotCardsOf(b.tarot).map(c => `<span><img src="${cardSrc(U.esc(c.id))}" alt="" loading="lazy" onerror="trImgErr(this)"><small>${U.esc(c.pos.replace(/ /g, ''))}</small><b>${U.esc(c.name)}</b></span>`).join('')}</div>` : `<p class="long">${U.esc(b.tarotText)}</p><p class="tr-dm">客人自行貼上的占卜結果</p>`}${b.tarotNote ? `<p class="tr-note">客人補充：${U.esc(b.tarotNote)}</p>` : ''}${b.tarot ? (SPLIT ? `<a class="lnk" href="${U.esc(careBase())}admin.html#/admin/tarot/${b.tarot.spread === 'full' ? 'pending/' + encodeURIComponent(b.tarot.id) : 'records?q=' + encodeURIComponent(b.tarot.id)}" target="_blank" rel="noopener">在陪伴後台查看完整${b.tarot.spread === 'full' ? '解讀' : '占卜紀錄'} ›</a>` : `<a class="lnk" href="#/admin/tarot/${b.tarot.spread === 'full' ? 'pending/' + encodeURIComponent(b.tarot.id) : 'records?q=' + encodeURIComponent(b.tarot.id)}">查看完整${b.tarot.spread === 'full' ? '解讀' : '占卜紀錄'} ›</a>`) : ''}</section>` : ''}
         <section class="dw-card"><h4>款項</h4><dl class="kv">${this.full() || !(b.balance > 0) ? `<dt>款項</dt><dd class="num">${U.money(b.deposit || b.price)}・${(PAY_META[b.depositMethod] || {}).label || '—'}${b.depositRef ? '・' + U.esc(b.depositRef) : ''}${b.depositConfirmedAt ? '・已確認' : b.status === 'CHECKING' ? '・待對帳' : b.status === 'UNPAID' ? '・未付' : ''}</dd>` : `<dt>訂金</dt><dd class="num">${U.money(b.deposit)}・${(PAY_META[b.depositMethod] || {}).label || '—'}${b.depositRef ? '・' + U.esc(b.depositRef) : ''}${b.depositConfirmedAt ? '・已確認' : ''}</dd><dt>尾款</dt><dd class="num">${U.money(b.balance)}・${b.balanceStatus === 'PAID' ? '已付清' : b.balanceStatus === 'CHECKING' ? '待對帳' : `未付（期限 ${U.dot(b.balanceDueDate)}）`}</dd>`}<dt>Zoom</dt><dd>${b.zoomLink ? `<a class="lnk" href="${U.esc(b.zoomLink)}" target="_blank" rel="noopener">${U.esc(b.zoomLink)}</a>` : '尚未填寫'}</dd><dt>改期</dt><dd>${b.rescheduleCount ? `${b.rescheduleCount} 次・原 ${U.dot(b.originalDate)} ${b.originalTime}` : '無'}</dd><dt>客人未出席</dt><dd>${c ? c.noShowCount : 0} 次</dd></dl></section>
@@ -3958,11 +4000,25 @@ const Admin = {
       </div>`, sc => {
       this.bindBookingActions(sc);
       const on = (sel, fn) => sc.querySelectorAll(sel).forEach(x => x.addEventListener('click', fn));
+      on('[data-cusend]', () => this.sendCustomDlg(id));
       on('[data-dn]', () => this.markDone(id)); on('[data-ns]', () => this.markNoShow(id)); on('[data-rs]', () => this.rescheduleBk(id)); on('[data-ed]', () => this.editBk(id)); on('[data-cc]', () => this.cancelBk(id));
       AUI.paint(sc);
     }, { label: '預約明細' });
   },
-  tplName(k) { return (typeof SEED_TEMPLATES !== 'undefined' && SEED_TEMPLATES.find(t => t[0] === k) || [k, k || '管理員通知'])[1]; },
+  /* v5.4：預約明細「傳送訊息」：選一則自訂通知送給這位客人 */
+  async sendCustomDlg(id) {
+    let list; try { list = (await api.call('adminGetTemplates')).templates.filter(x => /^CU_/.test(x.templateKey)); } catch (e) { return errToast(e); }
+    list.forEach(x => { (this._cuNames = this._cuNames || {})[x.templateKey] = x.name; });
+    if (!list.length) return toast('還沒有自訂通知：請到「設定 › 通知訊息」新增，送法選「手動送」', 'err');
+    list.sort((a, b) => (a.timing === 'manual' ? 0 : 1) - (b.timing === 'manual' ? 0 : 1));
+    let pick = list[0].templateKey;
+    const ok = await modal({ title: '傳送訊息', ok: '傳送',
+      html: `<p class="mnote" style="margin-top:0">選一則自訂通知，馬上用 LINE 傳給這位客人（算 1 則額度）。</p><div class="cu-pick">${list.map((x, i) => `<label class="cu-op"><input type="radio" name="cup" value="${U.esc(x.templateKey)}" ${i ? '' : 'checked'}><span><b>${U.esc(x.name)}</b><small>${x.timing === 'manual' ? '手動送' : x.timing === 'cu_before' ? `原本設定：服務前 ${x.offsetDays} 天自動送` : `原本設定：服務後第 ${x.offsetDays} 天自動送`}</small><small class="cu-body">${U.esc(String(x.body || '').slice(0, 60))}${String(x.body || '').length > 60 ? '…' : ''}</small></span></label>`).join('')}</div>`,
+      onOpen(sc) { sc.querySelectorAll('[name="cup"]').forEach(i => i.addEventListener('change', () => { pick = i.value; })); },
+      onOk: () => api.call('adminSendCustom', { bookingId: id, templateKey: pick }) });
+    if (ok) { toast('已傳送', 'ok'); this.bust(); }
+  },
+  tplName(k) { if (/^CU_/.test(k || '')) return (this._cuNames || {})[k] || '自訂通知'; return (typeof SEED_TEMPLATES !== 'undefined' && SEED_TEMPLATES.find(t => t[0] === k) || [k, k || '管理員通知'])[1]; },
   reason(r) { return { template_disabled: '範本已關閉', not_friend: '客人未加入好友', no_zoom_link: '尚未填寫 Zoom', not_sent: '只儲存' }[r] || r || ''; },
 
   /* =====================================================================
@@ -4080,19 +4136,29 @@ const Admin = {
     const pv = await api.call('adminPreviewTemplate', { templateKey: t.templateKey, override: draft });
     const groups = {}; templates.forEach(x => (groups[x.group] = groups[x.group] || []).push(x));
     const icon = k => ({ BOOKING_CREATED: ['doc', 'c1'], DEPOSIT_CONFIRMED: ['coin', 'c2'], BALANCE_CONFIRMED: ['coin', 'c4'], PRE_REMINDER: ['video', 'c3'], DAY_REMINDER: ['bell', 'c1'], COMPANION_START: ['heart', 'c4'], COMPANION_END: ['sprout', 'c4'], RESCHEDULED: ['cal', 'c2'], NO_SHOW: ['user-x', 'c5'], RP_READY: ['doc', 'c3'], RP_REMIND: ['bell', 'c2'], RP_ACKED: ['check', 'c4'], TR_CODE_POST: ['key', 'c4'], TR_CODE_PAID: ['key', 'c2'], TR_READING_DONE: ['moon', 'c3'] }[k] || ['chat', 'c1']);
-    const trig = x => ({ event: { BOOKING_CREATED: '客人送出預約時', DEPOSIT_CONFIRMED: '確認訂金收款時', BALANCE_CONFIRMED: '確認尾款收款時', COMPANION_START: '標記服務完成時', RESCHEDULED: '改期成立時', NO_SHOW: '標記未出席時', EV_PAID: '課程付款完成時', EV_ATM: 'ATM 取號後', EV_TRANSFER: '選擇 iPASS MONEY／銀行轉帳時', EV_RECHECK: '你在「收款」退回轉帳時', EV_WAITLIST: '加入候補時', EV_OFFER: '候補遞補時', EV_CHANGED: '場次異動或取消時', RP_READY: '發送總結報告時', RP_REMIND: '報告發送 3 天後仍未確認', RP_ACKED: '客人在 LINE 按「我已收到」', TR_CODE_PAID: '購買全能量解讀付款完成時', TR_CODE_WAIT: '用轉帳購買全能量解讀時', TR_PAY_RECHECK: '你在「收款」退回轉帳時', TR_CODE_EVENT: '重發活動彩蛋代碼時', TR_CODE_GIFT: '送回訪禮物代碼時', TR_READING_DONE: '發送全能量檢測解讀時' }[x.templateKey] || '事件發生時', after_service: `服務完成後第 ${x.offsetDays} 天 ${x.sendTime}`, before_service: `服務前 ${x.offsetDays} 天 ${x.sendTime}`, same_day: `服務開始前 ${x.offsetHours} 小時`, companion_end: `陪伴期最後一天 ${x.sendTime}`, before_event: `開課前 ${x.offsetDays} 天 ${x.sendTime}`, event_day: `開課前 ${x.offsetHours} 小時` }[x.timing]);
+    const trig = x => ({ event: { BOOKING_CREATED: '客人送出預約時', DEPOSIT_CONFIRMED: '確認訂金收款時', BALANCE_CONFIRMED: '確認尾款收款時', COMPANION_START: '標記服務完成時', RESCHEDULED: '改期成立時', NO_SHOW: '標記未出席時', EV_PAID: '課程付款完成時', EV_ATM: 'ATM 取號後', EV_TRANSFER: '選擇 iPASS MONEY／銀行轉帳時', EV_RECHECK: '你在「收款」退回轉帳時', EV_WAITLIST: '加入候補時', EV_OFFER: '候補遞補時', EV_CHANGED: '場次異動或取消時', RP_READY: '發送總結報告時', RP_REMIND: '報告發送 3 天後仍未確認', RP_ACKED: '客人在 LINE 按「我已收到」', TR_CODE_PAID: '購買全能量解讀付款完成時', TR_CODE_WAIT: '用轉帳購買全能量解讀時', TR_PAY_RECHECK: '你在「收款」退回轉帳時', TR_CODE_EVENT: '重發活動彩蛋代碼時', TR_CODE_GIFT: '送回訪禮物代碼時', TR_READING_DONE: '發送全能量檢測解讀時' }[x.templateKey] || '事件發生時', after_service: `服務完成後第 ${x.offsetDays} 天 ${x.sendTime}`, before_service: `服務前 ${x.offsetDays} 天 ${x.sendTime}`, same_day: `服務開始前 ${x.offsetHours} 小時`, companion_end: `陪伴期最後一天 ${x.sendTime}`, before_event: `開課前 ${x.offsetDays} 天 ${x.sendTime}`, event_day: `開課前 ${x.offsetHours} 小時`, cu_before: `服務前 ${x.offsetDays} 天 ${x.sendTime}`, cu_after: `服務後第 ${x.offsetDays} 天 ${x.sendTime}`, manual: '手動送（在預約明細按「傳送訊息」）' }[x.timing]);
+    const isCu = k => /^CU_/.test(k || ''); this._cuNames = {}; templates.forEach(x => { if (isCu(x.templateKey)) this._cuNames[x.templateKey] = x.name; });
+    const offs = templates.filter(x => !isCu(x.templateKey) && !x.enabled), vis = templates.filter(x => isCu(x.templateKey) || x.enabled);
+    const vgroups = {}; templates.forEach(x => { if (!vgroups[x.group]) vgroups[x.group] = []; }); vis.forEach(x => vgroups[x.group].push(x));
+    const foldOpen = this._tplFold || offs.some(x => x.templateKey === t.templateKey);
+    const itHTML = x => { const [ii, cc] = isCu(x.templateKey) ? ['chat', 'c3'] : icon(x.templateKey); return `<div class="it ${x.templateKey === t.templateKey ? 'on' : ''} ${x.enabled ? '' : 'dis'}"><button class="it-b" data-tk="${x.templateKey}"><span class="ico ${cc}">${ic(ii)}</span><span class="t"><b>${U.esc(x.name)}${isCu(x.templateKey) ? '<span class="cu-tag">自訂</span>' : ''}</b><small>${trig(x)}</small></span></button>${AUI.sw(x.enabled, `data-tog="${x.templateKey}"`, '啟用' + x.name)}</div>`; };
+    const CU_G = ['服務提醒', '陪伴期'];
     const st = stats[t.templateKey] || {};
     const html = this.shell({ title: '通知訊息', mirror: '預約完成・LINE 通知', sub: '所有通知由 Mia 官方 LINE 傳送' }, `
       <div class="cols3 tpl">
-        <section class="card tpl-l" aria-label="通知範本">${Object.keys(groups).map(g => `<h5 class="grp">${U.esc(g)}</h5>${groups[g].map(x => { const [ii, cc] = icon(x.templateKey); return `<div class="it ${x.templateKey === t.templateKey ? 'on' : ''} ${x.enabled ? '' : 'dis'}"><button class="it-b" data-tk="${x.templateKey}"><span class="ico ${cc}">${ic(ii)}</span><span class="t"><b>${U.esc(x.name)}</b><small>${trig(x)}</small></span></button>${AUI.sw(x.enabled, `data-tog="${x.templateKey}"`, '啟用' + x.name)}</div>`; }).join('')}`).join('')}</section>
+        <section class="card tpl-l" aria-label="通知範本">${Object.keys(vgroups).filter(g => vgroups[g].length || CU_G.includes(g)).map(g => `<h5 class="grp">${U.esc(g)}</h5>${vgroups[g].map(itHTML).join('')}${CU_G.includes(g) ? `<button type="button" class="tpl-add" data-addcu="${U.esc(g)}">${ic('plus')}新增自訂通知</button>` : ''}`).join('')}
+          ${offs.length ? `<button type="button" class="tpl-fold" data-fold aria-expanded="${foldOpen}"><span>已關閉的通知（${offs.length}）</span><span>${foldOpen ? '收起' : '展開'}</span></button>${foldOpen ? `<div class="tpl-offs">${offs.map(itHTML).join('')}</div>` : ''}` : ''}</section>
         <section class="card"><header class="ch"><h3>${U.esc(t.name)}</h3><span class="sub">觸發時機：${trig(t)}</span></header>
           <div class="cb">
             <div class="row2"><div class="fld"><span class="lbl">訊息格式</span><div class="seg sm"><button data-fmt="card" class="${draft.format === 'card' ? 'on' : ''}">卡片</button><button data-fmt="text" class="${draft.format === 'text' ? 'on' : ''}">純文字</button></div></div>${AUI.field({ label: '卡片標題', attr: 'data-f="title"', value: draft.title, max: 20 })}</div>
-            ${t.timing !== 'event' ? `<div class="row3">${t.timing === 'same_day' || t.timing === 'event_day' ? `<label class="fld"><span class="lbl">${t.timing === 'event_day' ? '開課' : '服務'}前幾小時</span><input class="inp num" type="number" min="0" max="12" data-f="offsetHours" value="${draft.offsetHours}"></label>` : t.timing === 'before_service' || t.timing === 'before_event' || t.timing === 'after_service' ? `<label class="fld"><span class="lbl">${t.timing === 'after_service' ? '服務完成後幾天' : (t.timing === 'before_event' ? '開課' : '服務') + '前幾天'}</span><input class="inp num" type="number" min="1" max="14" data-f="offsetDays" value="${draft.offsetDays}"></label><label class="fld"><span class="lbl">傳送時間</span><input class="inp num" type="time" data-f="sendTime" value="${U.esc(draft.sendTime)}"></label>` : `<label class="fld"><span class="lbl">傳送時間</span><input class="inp num" type="time" data-f="sendTime" value="${U.esc(draft.sendTime)}"></label>`}</div>` : ''}
+            ${isCu(t.templateKey) ? `<div class="cu-ed"><label class="fld"><span class="lbl">名稱（只有你看得到）</span><input class="inp" data-f="name" maxlength="30" value="${U.esc(draft.name)}"></label>
+              <div class="fld"><span class="lbl">什麼時候送</span><div class="seg sm">${[['cu_before', '服務前'], ['cu_after', '服務後（陪伴期）'], ['manual', '手動送']].map(([k, l]) => `<button type="button" data-cut="${k}" class="${draft.timing === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+              ${draft.timing === 'manual' ? '<p class="mnote">不會自動送。在預約明細按「傳送訊息」，選這則就會送給那位客人。</p>' : `<div class="row3"><label class="fld"><span class="lbl">${draft.timing === 'cu_before' ? '服務前幾天' : '服務後第幾天'}</span><input class="inp num" type="number" min="0" max="30" data-f="offsetDays" value="${draft.offsetDays}"></label><label class="fld"><span class="lbl">傳送時間</span><input class="inp num" type="time" data-f="sendTime" value="${U.esc(draft.sendTime)}"></label></div><p class="mnote">${draft.timing === 'cu_before' ? '只送給訂金已確認的預約；改期後照新的日期重新計算；同一筆預約只送一次。' : '服務標記完成後才會送；同一筆預約只送一次。'}</p>`}</div>` : ''}
+            ${t.timing !== 'event' && !isCu(t.templateKey) ? `<div class="row3">${t.timing === 'same_day' || t.timing === 'event_day' ? `<label class="fld"><span class="lbl">${t.timing === 'event_day' ? '開課' : '服務'}前幾小時</span><input class="inp num" type="number" min="0" max="12" data-f="offsetHours" value="${draft.offsetHours}"></label>` : t.timing === 'before_service' || t.timing === 'before_event' || t.timing === 'after_service' ? `<label class="fld"><span class="lbl">${t.timing === 'after_service' ? '服務完成後幾天' : (t.timing === 'before_event' ? '開課' : '服務') + '前幾天'}</span><input class="inp num" type="number" min="1" max="14" data-f="offsetDays" value="${draft.offsetDays}"></label><label class="fld"><span class="lbl">傳送時間</span><input class="inp num" type="time" data-f="sendTime" value="${U.esc(draft.sendTime)}"></label>` : `<label class="fld"><span class="lbl">傳送時間</span><input class="inp num" type="time" data-f="sendTime" value="${U.esc(draft.sendTime)}"></label>`}</div>` : ''}
             <div class="fld"><span class="lbl"><span>訊息內容</span><small class="num"><span data-bc>${draft.body.length}</span> / 500</small></span>${this.varChips('notify', t.templateKey)}<textarea class="inp" data-f="body" maxlength="500" rows="8">${U.esc(draft.body)}</textarea><div data-varbox></div></div>
             <div class="row2"><div class="fld"><span class="lbl">按鈕一</span><input class="inp" data-f="btn1Label" placeholder="按鈕文字" value="${U.esc(draft.btn1Label)}"><input class="inp" data-f="btn1Url" placeholder="https:// 或 {我的預約}" value="${U.esc(draft.btn1Url)}"></div><div class="fld"><span class="lbl">按鈕二</span><input class="inp" data-f="btn2Label" placeholder="按鈕文字" value="${U.esc(draft.btn2Label)}"><input class="inp" data-f="btn2Url" placeholder="https:// 或 {Zoom連結}" value="${U.esc(draft.btn2Url)}"></div></div>
           </div>
-          <footer class="cf"><span class="meta">近 7 天已傳送 <b class="num">${st.sentWeek || 0}</b>・略過 <b class="num">${st.skippedWeek || 0}</b></span><button class="btn ghost" data-test>${ic('send')}傳送測試</button><button class="btn pri" data-save>${ic('check')}儲存範本</button></footer></section>
+          <footer class="cf"><span class="meta">近 7 天已傳送 <b class="num">${st.sentWeek || 0}</b>・略過 <b class="num">${st.skippedWeek || 0}</b></span>${isCu(t.templateKey) ? `<button class="btn danger" data-tdel>刪除這則</button>` : ''}<button class="btn ghost" data-test>${ic('send')}傳送測試</button><button class="btn pri" data-save>${ic('check')}儲存範本</button></footer></section>
         <section class="card pvw"><header class="ch"><h3>LINE 預覽</h3><span class="sub">以最新一筆預約套用</span></header><div class="cb" data-pv>${this.previewHtml(pv.rendered, draft, pv.sample)}</div>
           <header class="ch"><h3>可用變數</h3><span class="sub">這則通知能用的變數</span></header><div class="cb">${this.varTable('notify', t.templateKey)}</div></section>
       </div>`);
@@ -4101,6 +4167,11 @@ const Admin = {
       const deb = AUI.debounce(refresh, 200);
       AUI.bindCounters(r);
       r.querySelectorAll('[data-tk]').forEach(b => b.addEventListener('click', () => { s.tplKey = b.dataset.tk; this._tplDraft = null; App.route(); }));
+      /* v5.4：自訂通知（新增、送出時間、刪除）與「已關閉的通知」收合 */
+      r.querySelectorAll('[data-addcu]').forEach(b => b.addEventListener('click', async () => { try { const x = await api.call('adminCreateTemplate', { group: b.dataset.addcu }); s.tplKey = x.template.templateKey; this._tplDraft = null; toast('已新增自訂通知，寫好內容後按「儲存範本」', 'ok'); App.route(); } catch (e) { errToast(e); } }));
+      r.querySelectorAll('[data-fold]').forEach(b => b.addEventListener('click', () => { this._tplFold = !foldOpen; App.route(); }));
+      r.querySelectorAll('[data-cut]').forEach(b => b.addEventListener('click', () => { draft.timing = b.dataset.cut; if (draft.timing !== 'manual' && !(+draft.offsetDays >= 0)) draft.offsetDays = 1; App.route(); }));
+      r.querySelectorAll('[data-tdel]').forEach(b => b.addEventListener('click', async () => { if (!await confirmBox('刪除自訂通知', `<p>確定要刪除「${U.esc(t.name)}」嗎？刪除後不會再送出，已送出的紀錄會保留。</p>`, '刪除', true)) return; try { await api.call('adminDeleteTemplate', { templateKey: t.templateKey }); s.tplKey = ''; this._tplDraft = null; toast('已刪除', 'ok'); App.route(); } catch (e) { errToast(e); } }));
       r.querySelectorAll('[data-tog]').forEach(b => b.addEventListener('click', async e => { e.stopPropagation(); const x = templates.find(y => y.templateKey === b.dataset.tog); await this.run(() => api.call('adminSaveTemplate', { template: { templateKey: x.templateKey, enabled: !x.enabled } }), x.enabled ? '已關閉此通知' : '已啟用此通知'); if (x.templateKey === draft.templateKey) draft.enabled = !x.enabled; }));
       /* 變數檢查：標題、內容、按鈕文字；有錯誤時不能儲存 */
       const vcheck = () => { const res = varCheckDeep([draft.title, draft.body, draft.btn1Label, draft.btn2Label], 'notify', t.templateKey); this.varIssues(r.querySelector('[data-varbox]'), res, r.querySelector('[data-save]')); return res; };
@@ -4131,7 +4202,7 @@ const Admin = {
       const ov = data.overrides.filter(o => o.dateFrom <= d && d <= o.dateTo).pop();
       const w = W.find(x => +x.weekday === U.dow(d));
       const cls = ov ? ov.type : (!w.enabled ? 'weekoff' : '');
-      cells += `<button class="c ${cls} ${d < T ? 'past' : ''} ${d === T ? 'today' : ''} ${d === s.slotSel ? 'sel' : ''}" data-sd="${d}" aria-label="${U.dateLabel(d)}"><span class="num">${+d.slice(8)}</span>${ov ? `<small>${ov.type === 'open' ? '開放' : '休假'}</small>` : ''}</button>`;
+      cells += `<button class="c ${cls} ${d < T ? 'past' : ''} ${d === T ? 'today' : ''} ${d === s.slotSel ? 'sel' : ''}" data-sd="${d}" aria-label="${U.dateLabel(d)}"><span class="num">${+d.slice(8)}</span>${ov ? `<small>${ov.type === 'open' ? '改時段' : '休假'}</small>` : ''}</button>`;
     }
     const html = this.shell({ title: '時段設定', mirror: '預約流程・選擇時段', sub: '變更儲存後即時同步前台', pri: `<button class="btn pri sm" data-savea>${ic('check')}<span>儲存設定</span></button>` }, `
       <div class="rules">
@@ -4150,8 +4221,8 @@ const Admin = {
         <div class="stack">
           <section class="card"><header class="ch"><h3>日期例外</h3><span class="sub num">${ms.slice(0, 4)}.${ms.slice(5, 7)}</span><div class="r nav2"><button class="ib" data-mm="-1" aria-label="上個月">${ic('left')}</button><button class="ib" data-mm="1" aria-label="下個月">${ic('right')}</button><button class="btn ghost sm" data-addov>${ic('plus')}新增例外</button></div></header>
             <div class="cb"><div class="mcal">${WD.map(w => `<span class="wd">${w}</span>`).join('')}${cells}</div>
-            <p class="lgd"><span><i class="open"></i>特別開放日</span><span><i class="closed"></i>休假日</span><span><i class="weekoff"></i>每週休息</span></p>
-            <ul class="ovs">${data.overrides.filter(o => o.dateTo >= T).map(o => `<li class="ov"><span class="k ${o.type}">${o.type === 'open' ? '特別開放' : '休假日'}</span><span class="t"><b class="num">${U.dot(o.dateFrom)}${o.dateTo !== o.dateFrom ? ' – ' + U.dot(o.dateTo).slice(5) : `（${WD[U.dow(o.dateFrom)]}）`}</b><small class="num">${o.type === 'open' ? o.ranges.map(r => r.join(' – ')).join('、') + `・產生 ${genFor(o.ranges).length} 個時段` : (o.dateTo !== o.dateFrom ? `連續 ${U.diffDays(o.dateFrom, o.dateTo) + 1} 天不開放` : '全天不開放')}${o.note ? '・' + U.esc(o.note) : ''}</small></span><button class="ib" data-ovx="${o.overrideId}" aria-label="刪除例外">${ic('x')}</button></li>`).join('') || '<li class="none">尚無例外日期</li>'}</ul></div></section>
+            <p class="lgd"><span><i class="open"></i>這天改時段</span><span><i class="closed"></i>休假日</span><span><i class="weekoff"></i>每週休息</span></p>
+            <ul class="ovs">${data.overrides.filter(o => o.dateTo >= T).map(o => `<li class="ov"><span class="k ${o.type}">${o.type === 'open' ? '改時段' : '休假日'}</span><span class="t"><b class="num">${U.dot(o.dateFrom)}${o.dateTo !== o.dateFrom ? ' – ' + U.dot(o.dateTo).slice(5) : `（${WD[U.dow(o.dateFrom)]}）`}</b><small class="num">${o.type === 'open' ? o.ranges.map(r => r.join(' – ')).join('、') + `・產生 ${genFor(o.ranges).length} 個時段` : (o.dateTo !== o.dateFrom ? `連續 ${U.diffDays(o.dateFrom, o.dateTo) + 1} 天不開放` : '全天不開放')}${o.note ? '・' + U.esc(o.note) : ''}</small></span><button class="tlink sm" data-ove="${o.overrideId}">修改</button><button class="ib" data-ovx="${o.overrideId}" aria-label="刪除例外">${ic('x')}</button></li>`).join('') || '<li class="none">尚無例外日期</li>'}</ul></div></section>
           <section class="card"><header class="ch"><h3>前台預覽</h3><span class="sub num">${U.dateLabel(s.slotSel, true)}</span></header><div class="cb">
             ${pv.candidates.length ? `<div class="pvs">${pv.candidates.map(c => `<span class="${c.state !== 'open' ? 'bk' : ''}"><b class="num">${c.time}</b><small>${c.state === 'open' ? '可預約' : c.state === 'booked' ? '已預約' : '已達上限'}</small></span>`).join('')}</div>` : '<p class="none">這天不開放預約</p>'}
             <p class="mnote">${s.slotSel < U.addDays(T, R.minNoticeDays) ? '此日期在最短預約天數內，前台不開放。' : pv.visible.length ? `前台顯示 <b>${pv.visible.length} 個時段</b>：${pv.visible.join('、')}` : '前台此日不顯示任何時段。'}${this._avDirty ? '<br><b class="dn">尚未儲存的變更，儲存後預覽才會更新。</b>' : ''}</p></div></section>
@@ -4166,25 +4237,58 @@ const Admin = {
       r.querySelectorAll('[data-rgx]').forEach(b => b.addEventListener('click', () => { const [wd, ix] = b.dataset.rgx.split(':').map(Number); const w = W.find(x => +x.weekday === wd); w.ranges.splice(ix, 1); if (!w.ranges.length) w.enabled = false; dirty(); re(); }));
       r.querySelectorAll('[data-rga]').forEach(b => b.addEventListener('click', () => { const w = W.find(x => +x.weekday === +b.dataset.rga); const last = w.ranges[w.ranges.length - 1]; const st = last ? U.fromMin(Math.min(22 * 60, U.toMin(last[1]) + 60)) : '10:00'; w.ranges.push([st, U.fromMin(Math.min(23 * 60 + 59, U.toMin(st) + 180))]); dirty(); re(); }));
       r.querySelector('[data-copyday]').addEventListener('click', () => { const mon = W.find(x => +x.weekday === 1); W.forEach(w => { if (w.enabled && +w.weekday !== 1) w.ranges = U.clone(mon.ranges); }); dirty(); re(); toast('已套用週一時段到其他開放日，記得儲存'); });
-      r.querySelectorAll('[data-sd]').forEach(b => b.addEventListener('click', () => { s.slotSel = b.dataset.sd; re(); }));
+      /* v5.4：點日期＝選這天看預覽，並直接開新增／修改例外 */
+      r.querySelectorAll('[data-sd]').forEach(b => b.addEventListener('click', () => { s.slotSel = b.dataset.sd; const d = b.dataset.sd; if (d < T) { re(); return; } const ov = data.overrides.filter(o => o.dateFrom <= d && d <= o.dateTo).pop(); this.overrideDialog(d, data, re, ov, { R, W, genFor }).then(() => { }); re(); }));
+      r.querySelectorAll('[data-ove]').forEach(b => b.addEventListener('click', () => { const ov = data.overrides.find(o => o.overrideId === b.dataset.ove); if (ov) this.overrideDialog(ov.dateFrom, data, re, ov, { R, W, genFor }); }));
       r.querySelectorAll('[data-mm]').forEach(b => b.addEventListener('click', () => { s.slotMonth = U.addMonths(s.slotMonth, +b.dataset.mm); re(); }));
       r.querySelectorAll('[data-ovx]').forEach(b => b.addEventListener('click', async () => { if (!await confirmBox('刪除例外日', '<p>刪除後此日期恢復每週時段規則。</p>', '刪除', true)) return; try { const x = await api.call('adminDeleteOverride', { overrideId: b.dataset.ovx }); data.overrides = x.overrides; App.cfg = null; toast('已刪除', 'ok'); re(); } catch (e) { errToast(e); } }));
-      r.querySelector('[data-addov]').addEventListener('click', () => this.overrideDialog(s.slotSel, data, re));
+      r.querySelector('[data-addov]').addEventListener('click', () => this.overrideDialog(s.slotSel, data, re, null, { R, W, genFor }));
       r.querySelectorAll('[data-savea]').forEach(b => b.addEventListener('click', async () => { try { this._av = await api.call('adminSaveAvailability', { rules: R, weekly: W }); this._avDirty = false; App.cfg = null; toast('已儲存，前台已同步', 'ok'); re(); } catch (e) { errToast(e); } }));
     });
   },
-  async overrideDialog(date, data, re) {
-    let type = 'closed';
+  /* v5.4：日期例外＝休假（全天不開放）／這天改時段（任何一天都能用、可多段）；可直接修改；重疊時詢問是否取代（設計稿第 25 排） */
+  async overrideDialog(date, data, re, ov, ctxA) {
+    const R = ctxA.R, W = ctxA.W, genFor = ctxA.genFor;
+    const weekRanges = d => { const w = W.find(x => +x.weekday === U.dow(d)); return w && w.enabled ? U.clone(w.ranges) : []; };
+    const st = { type: ov ? ov.type : 'closed', from: ov ? ov.dateFrom : date, to: ov ? ov.dateTo : date, note: ov ? ov.note || '' : '', ranges: ov && ov.type === 'open' ? U.clone(ov.ranges) : weekRanges(date) };
+    if (!st.ranges.length) st.ranges = [['10:00', '12:00']];
+    const rangeHTML = () => `${st.ranges.map((r, i) => `<span class="rg ovr"><input class="num" type="time" data-ovr="${i}:0" value="${r[0]}" aria-label="開始"> – <input class="num" type="time" data-ovr="${i}:1" value="${r[1]}" aria-label="結束"><button type="button" class="x" data-ovrx="${i}" aria-label="移除這段">${ic('x')}</button></span>`).join('')}<button type="button" class="tlink sm" data-ovra>${ic('plus')}新增一段</button>`;
+    const pvHTML = () => { const g = genFor(st.ranges); return g.length ? `<span class="chips2">${g.map(x => `<span class="num">${x}</span>`).join('')}</span><small>產生 ${g.length} 個時段（每場 ${R.sessionMinutes} 分鐘＋緩衝 ${R.bufferMinutes} 分鐘）</small>` : '<small class="dn">這些時段排不出任何一場，請調整</small>'; };
+    const wkHint = () => { const wr = weekRanges(st.from); return wr.length ? `取代每週${WD[U.dow(st.from)]}的 ${wr.map(r => r.join('–')).join('、')}` : `週${WD[U.dow(st.from)]}原本休息，這天只開放以下時段`; };
+    let saved = null;
     const ok = await modal({
-      title: '新增日期例外', ok: '新增',
-      html: `<div class="seg sm" style="margin-bottom:14px"><button data-ty="closed" class="on">休假日</button><button data-ty="open">特別開放日</button></div>
-        <div class="row2"><label class="fld"><span class="lbl">開始日期</span><input class="inp" type="date" id="of" value="${date}"></label><label class="fld"><span class="lbl">結束日期</span><input class="inp" type="date" id="ot" value="${date}"></label></div>
-        <div class="row2 hide" id="orr"><label class="fld"><span class="lbl">開放開始</span><input class="inp" type="time" id="os" value="19:30"></label><label class="fld"><span class="lbl">開放結束</span><input class="inp" type="time" id="oe" value="22:30"></label></div>
-        ${AUI.field({ label: '備註', id: 'on', max: 30, ph: '例如：出國、講座' })}`,
-      onOpen(sc) { sc.querySelectorAll('[data-ty]').forEach(b => b.addEventListener('click', () => { type = b.dataset.ty; sc.querySelectorAll('[data-ty]').forEach(x => x.classList.toggle('on', x === b)); sc.querySelector('#orr').classList.toggle('hide', type !== 'open'); })); },
-      onOk: sc => api.call('adminSaveOverride', { override: { dateFrom: sc.querySelector('#of').value, dateTo: sc.querySelector('#ot').value, type, ranges: type === 'open' ? [[sc.querySelector('#os').value, sc.querySelector('#oe').value]] : [], note: sc.querySelector('#on').value } })
+      title: ov ? '修改日期例外' : '新增日期例外', ok: '儲存',
+      html: `<div class="seg sm ov-seg" style="margin-bottom:14px"><button type="button" data-ty="closed" class="${st.type === 'closed' ? 'on' : ''}">休假（全天不開放）</button><button type="button" data-ty="open" class="${st.type === 'open' ? 'on' : ''}">這天改時段</button></div>
+        <div class="row2"><label class="fld"><span class="lbl">開始日期</span><input class="inp" type="date" id="of" value="${st.from}"></label><label class="fld"><span class="lbl">結束日期</span><input class="inp" type="date" id="ot" value="${st.to}"></label></div>
+        <div class="fld ov-open ${st.type === 'open' ? '' : 'hide'}"><span class="lbl"><span>這天開放的時段</span><small data-wkh>${wkHint()}</small></span><div class="ov-rgs" data-rgs>${rangeHTML()}</div>
+          <span class="lbl" style="margin-top:10px">前台會看到</span><div class="gen ov-pv" data-ovpv>${pvHTML()}</div></div>
+        ${AUI.field({ label: '備註', id: 'on', max: 30, ph: '例如：出國、下午才有空', value: st.note })}
+        ${ov ? `<p style="margin:6px 0 0"><button type="button" class="btn danger sm" data-ovdel>刪除這個例外</button></p>` : ''}`,
+      onOpen(sc, close) {
+        const paint = () => { sc.querySelector('[data-rgs]').innerHTML = rangeHTML(); sc.querySelector('[data-ovpv]').innerHTML = pvHTML(); bind(); };
+        const bind = () => {
+          sc.querySelectorAll('[data-ovr]').forEach(i => i.addEventListener('change', () => { const [ix, k] = i.dataset.ovr.split(':').map(Number); st.ranges[ix][k] = i.value; sc.querySelector('[data-ovpv]').innerHTML = pvHTML(); }));
+          sc.querySelectorAll('[data-ovrx]').forEach(b => b.addEventListener('click', () => { st.ranges.splice(+b.dataset.ovrx, 1); if (!st.ranges.length) st.ranges.push(['10:00', '12:00']); paint(); }));
+          const ad = sc.querySelector('[data-ovra]'); if (ad) ad.addEventListener('click', () => { const last = st.ranges[st.ranges.length - 1]; const a = last ? U.fromMin(Math.min(22 * 60, U.toMin(last[1]) + 30)) : '10:00'; st.ranges.push([a, U.fromMin(Math.min(23 * 60 + 59, U.toMin(a) + 90))]); paint(); });
+        };
+        bind();
+        sc.querySelectorAll('[data-ty]').forEach(b => b.addEventListener('click', () => { st.type = b.dataset.ty; sc.querySelectorAll('[data-ty]').forEach(x => x.classList.toggle('on', x === b)); sc.querySelector('.ov-open').classList.toggle('hide', st.type !== 'open'); }));
+        sc.querySelector('#of').addEventListener('change', e => { const v = e.target.value; const t = sc.querySelector('#ot'); if (!t.value || t.value < v || t.value === st.from) t.value = v; st.from = v; if (!ov) { const wr = weekRanges(v); if (wr.length) st.ranges = wr; paint(); } sc.querySelector('[data-wkh]').textContent = wkHint(); });
+        const del = sc.querySelector('[data-ovdel]'); if (del) del.addEventListener('click', async () => { if (!await confirmBox('刪除例外日', '<p>刪除後這幾天恢復每週時段規則。</p>', '刪除', true)) return; try { const x = await api.call('adminDeleteOverride', { overrideId: ov.overrideId }); data.overrides = x.overrides; App.cfg = null; close(null); toast('已刪除例外日', 'ok'); re(); } catch (e) { errToast(e); } });
+      },
+      onOk: async sc => {
+        const o = { overrideId: ov ? ov.overrideId : undefined, dateFrom: sc.querySelector('#of').value, dateTo: sc.querySelector('#ot').value || sc.querySelector('#of').value, type: st.type, ranges: st.type === 'open' ? st.ranges.filter(r => r[0] && r[1]) : [], note: sc.querySelector('#on').value };
+        const chk = await api.call('adminSaveOverride', { override: o, dryRun: true });
+        const lab = x => `${U.dot(x.dateFrom)}${x.dateTo !== x.dateFrom ? ' – ' + U.dot(x.dateTo).slice(5) : ''}（${x.type === 'open' ? '改時段：' + x.ranges.map(r => r.join('–')).join('、') : '休假'}）`;
+        const parts = [];
+        if (chk.overlaps.length) parts.push(`<p>這段日期已經有例外：</p><ul class="mlist">${chk.overlaps.map(x => `<li class="num">${U.esc(lab(x))}</li>`).join('')}</ul><p>要改成新的設定嗎？只會取代重疊的日期，其他天的例外不動。</p>`);
+        if (chk.conflicts.length) parts.push(`<p class="dn">有 ${chk.conflicts.length} 筆預約不在新的時段裡（預約不會被取消，請記得聯絡客人改期）：</p><ul class="mlist">${chk.conflicts.map(b => `<li class="num">${U.dot(b.date)} ${U.esc(b.startTime)}・${U.esc(b.name)}</li>`).join('')}</ul>`);
+        if (parts.length && !await confirmBox(chk.overlaps.length ? '這段日期已經有例外' : '有預約不在新的時段裡', parts.join(''), chk.overlaps.length ? '改成新的設定' : '仍要儲存')) return false;
+        saved = await api.call('adminSaveOverride', { override: o, replace: true });
+        return saved;
+      }
     });
-    if (ok) { data.overrides = ok.overrides; App.cfg = null; toast('已新增例外日，前台已同步', 'ok'); re(); }
+    if (ok) { data.overrides = ok.overrides; App.cfg = null; toast(ov ? '已修改例外日，前台已同步' : '已新增例外日，前台已同步', 'ok'); re(); }
   },
 
   /* =====================================================================
@@ -4438,7 +4542,7 @@ const PLACEHOLDERS = ['價格', '時長', '訂金', '尾款', '陪伴天數', '�
 
 /* ===================== 變數：插入、說明、檢查、健檢（v3） ===================== */
 Object.assign(Admin, {
-  varDefs(scope, tplKey) { return (VAR_DEFS[scope] || []).filter(d => !d.only || d.only.indexOf(tplKey || '') >= 0); },
+  varDefs(scope, tplKey) { if (/^CU_/.test(tplKey || '')) tplKey = 'PRE_REMINDER'; return (VAR_DEFS[scope] || []).filter(d => !d.only || d.only.indexOf(tplKey || '') >= 0); },
   varChips(scope, tplKey) {
     return `<div class="vars vchips"><span>插入變數</span>${this.varDefs(scope, tplKey).map(d => `<button type="button" class="chip" data-ins="{${d.k}}" title="${U.esc(d.d)}・例：${U.esc(d.ex)}">{${d.k}}</button>`).join('')}<button type="button" class="tlink sm" data-varhelp="${scope}" data-tk="${U.esc(tplKey || '')}">變數說明</button></div>`;
   },
