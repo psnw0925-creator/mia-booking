@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.4.0-beta.1"
+  VERSION: "5.4.0-beta.2"
 };
 window.MIA_PART = 'admin';
 window.MIA_SPLIT = true;
@@ -879,6 +879,7 @@ body.admin .rg { display: inline-flex; align-items: center; gap: 4px; height: 36
 body.admin .rg input { width: 50px; border: 0; background: transparent; font-weight: 600; text-align: center; }
 body.admin .ov-rgs { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; } body.admin .rg.ovr input { width: 104px; } body.admin .ov-pv { display: flex; flex-direction: column; gap: 4px; } body.admin .modal .mlist { margin: 6px 0 10px; padding-left: 18px; line-height: 1.8; } body.admin .modal .dn { color: #A0482F; } body.admin .ov .tlink { margin-left: auto; }
 body.admin .cu-tag { display: inline-flex; height: 18px; align-items: center; padding: 0 7px; margin-left: 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: #F6E7C8; color: #7A5A36; vertical-align: 1px; } body.admin .tpl-add { display: flex; align-items: center; justify-content: center; gap: 6px; width: calc(100% - 8px); margin: 6px 4px 4px; padding: 9px; border-radius: 10px; border: 1.5px dashed #9FB4D6; color: var(--a-blue, #1F3D78); font-weight: 700; font-size: 13px; background: transparent; } body.admin .tpl-fold { display: flex; justify-content: space-between; width: 100%; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #F4F7FB; color: var(--ink-2); font-size: 13px; } body.admin .tpl-offs { margin-top: 6px; } body.admin .cu-ed { display: grid; gap: 12px; padding: 12px; margin-bottom: 12px; border-radius: 12px; background: #FFFBF1; border: 1px solid #E8D9B5; } body.admin .cu-pick { display: grid; gap: 8px; } body.admin .cu-op { display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); cursor: pointer; } body.admin .cu-op small { display: block; color: var(--ink-3); font-size: 12px; } body.admin .cu-op .cu-body { margin-top: 2px; }
+body.admin .dw-h .nw-impb { margin-left: auto; margin-right: 40px; align-self: center; flex: none; } body.admin .nw-srcs { display: grid; gap: 8px; max-height: 52vh; overflow: auto; } body.admin .nw-src { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff; text-align: left; } body.admin .nw-src:hover { border-color: #9FB4D6; background: #F6F9FD; } body.admin .nw-src small { display: block; color: var(--ink-3); font-size: 12px; } body.admin .nw-src .nw-spl { width: 40px; height: 40px; }
 body.admin .rg .x { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--ink-3); }
 body.admin .rg .x .i { width: 14px; height: 14px; }
 body.admin .addr { width: 36px; height: 36px; border-radius: 10px; border: 1px dashed #A9C8EC; color: var(--deep-2); display: grid; place-items: center; }
@@ -5055,7 +5056,7 @@ Object.assign(Admin, {
         <td class="num">${s ? `${U.dot(s.lessons[0].date).slice(5)}（${WD[U.dow(s.lessons[0].date)]}）${s.lessons[0].start}${e.sessions.length > 1 ? `<small>共 ${e.sessions.length} 場</small>` : ''}` : '<span class="muted">尚未建立場次</span>'}</td>
         <td class="num">${e.status === 'soon' ? `<small>${U.dot(e.regOpen).slice(5)} 開放報名</small>` : tot[1] ? `${tot[0]} / ${tot[1]}${wait ? `<small class="warn-t">候補 ${wait}</small>` : ''}` : '—'}</td>
         <td class="num">${e.collected ? U.money(e.collected) : '—'}</td><td>${this.evChip(e.status)}</td>
-        <td class="acts">${e.sessions.length ? `<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}/roster">名單</a>` : ''}<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}">編輯</a></td></tr>`; };
+        <td class="acts">${e.sessions.length ? `<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}/roster">名單</a>` : ''}${e.sessions.some(z => !z.cancelled && !['ended', 'cancelled'].includes(z.state)) ? `<button class="btn ghost sm" data-ev2n="${e.eventId}">發成最新消息</button>` : ''}<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}">編輯</a></td></tr>`; };
     const tab = (k, l) => `<button type="button" data-evst="${k}" class="${F.st === k ? 'on' : ''}">${l}<b>${k ? cnt(k) : x.items.length}</b></button>`;
     const html = this.shell({ title: '課程', mirror: '首頁課程區塊・課程活動頁・我的預約', pri: `<a class="btn pri sm" href="#/admin/events/e/new">${ic('plus')}<span>新增活動</span></a>` }, `
       <div class="kpis ev-kpis">
@@ -5069,6 +5070,7 @@ Object.assign(Admin, {
         <div class="tbl-wrap"><table class="tbl qt-tbl"><thead><tr><th>活動</th><th>型態</th><th>下一場</th><th>報名／名額</th><th>收款</th><th>狀態</th><th></th></tr></thead><tbody>${items.map(row).join('') || `<tr><td colspan="7">${AUI.empty(x.items.length ? '沒有符合條件的活動' : '還沒有活動', x.items.length ? '' : '按「新增活動」建立第一個課程')}</td></tr>`}</tbody></table></div></section>
       <p class="mnote">課程時間會自動從諮詢的可預約時段扣除。iPASS MONEY 與銀行轉帳由你在「收款」頁確認。</p>`);
     this.mount(root, html, r => {
+      r.querySelectorAll('[data-ev2n]').forEach(b => b.addEventListener('click', async () => { try { this._news = await api.call('adminGetNews'); const e = x.items.find(y => y.eventId === b.dataset.ev2n); this.newsEdit(null, this.newsFrom('ev', e)); } catch (er) { errToast(er); } }));
       r.querySelectorAll('[data-evst]').forEach(b => b.addEventListener('click', () => { F.st = b.dataset.evst; this.rerender(); }));
       r.querySelectorAll('[data-evmode]').forEach(b => b.addEventListener('click', () => { F.mode = b.dataset.evmode; this.rerender(); }));
       const q = r.querySelector('[data-evq]'); q.addEventListener('input', AUI.debounce(() => { F.q = q.value.trim(); this.rerender().then(() => { const n = document.querySelector('[data-evq]'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }); }, 300));
@@ -5771,12 +5773,49 @@ Object.assign(Admin, {
     if (!v) return; if (!v.cats) { toast('至少要有一個分類', 'err'); return; }
     this.run(() => api.call('adminSaveSettings', { settings: { 'news.categories': v.cats, 'news.homeEnabled': v.home, 'news.homeCount': v.count } }), '已儲存');
   },
-  async newsEdit(n) {
-    const x = this._news, isNew = !n; n = n || { title: '', category: x.categories[0], body: '', cover: { type: 'planet', style: 'custom1', url: '' }, btnLabel: '', btnTarget: '', pinned: false, state: 'draft', publishAt: '', unpublishAt: '' };
+  /* v5.4：從網站帶入（課程活動・方案・測驗）＝把標題、分類、內文、封面、按鈕、下架時間填好（只複製一次；設計稿第 26 排） */
+  newsFrom(kind, o) {
+    const cats = (this._news || {}).categories || [], cat = c => cats.includes(c) ? c : (cats[0] || c), T = U.today();
+    if (kind === 'ev') {
+      const ss = (o.sessions || []).filter(z => !z.cancelled && !['ended', 'cancelled'].includes(z.state));
+      const ln = z => { const ls = z.lessons || [], f = ls[0] || {}, l = ls[ls.length - 1] || {}; const when = z.when || (f.date ? `${U.dot(f.date).slice(5)}（${WD[U.dow(f.date)]}）${f.start || ''}${f.end ? '–' + f.end : ''}${ls.length > 1 ? `・共 ${ls.length} 堂` : ''}` : ''); const ml = z.modeLabel || (z.mode === 'onsite' ? '現場' : '線上'), loc = z.mode === 'onsite' ? [z.city && ml.indexOf(z.city) < 0 ? z.city : '', z.venue || z.address].filter(Boolean).join(' ') : ''; return `・${when}・${ml}${loc ? '・' + loc : ''}`; };
+      const early = o.earlyPrice && o.earlyUntil && o.earlyUntil >= T;
+      const lastEnd = ss.reduce((m, z) => { const l = (z.lessons || []).slice(-1)[0]; const v = l && l.date ? l.date + 'T' + (l.end || '23:59') + ':00+08:00' : ''; return v > m ? v : m; }, '');
+      const body = [String(o.summary || o.intro || '').trim(), '', ...ss.map(ln), `費用：${U.money(o.price)}${early ? `（早鳥至 ${U.dot(o.earlyUntil).slice(5)}：${U.money(o.earlyPrice)}）` : ''}`, '名額有限，報名付款完成即保留名額。'].join('\n').replace(/^\n+/, '');
+      return { title: o.title, category: cat('課程活動'), body, cover: Object.assign({ type: 'planet', style: 'custom1', url: '' }, o.cover || {}), btnLabel: '看課程', btnTarget: '#/events/' + o.slug, unpublishAt: lastEnd };
+    }
+    if (kind === 'plan') return { title: o.name, category: cat('公告'), body: [o.tagline || '', '', `費用：${U.money(o.price)}・${o.durationMinutes || ''} 分鐘`].join('\n').trim(), cover: { type: 'planet', style: o.style || 'custom1', url: '' }, btnLabel: '立即預約', btnTarget: '#/book?plan=' + encodeURIComponent(o.planId), unpublishAt: '' };
+    return { title: o.name, category: cat('遊戲'), body: String(o.intro || '').trim() || o.name, cover: { type: 'planet', style: o.style || 'custom1', url: '' }, btnLabel: '開始測驗', btnTarget: '#/quiz/' + encodeURIComponent(o.slug), unpublishAt: '' };
+  },
+  async newsImport(cur, apply) {
+    let evs = [], plans = [], qz = [];
+    try { [evs, plans, qz] = await Promise.all([api.call('adminGetEvents').then(x => x.items || []), this.plansCached().then(x => x.plans || []), api.call('adminGetQuiz').then(x => x.templates || []).catch(() => [])]); } catch (e) { return errToast(e); }
+    const T = U.today();
+    evs = evs.filter(e => e.state !== 'draft' && (e.sessions || []).some(z => !z.cancelled && !['ended', 'cancelled'].includes(z.state)));
+    plans = plans.filter(p => p.enabled !== false && p.enabled !== 'FALSE');
+    qz = qz.filter(q => !['draft', 'closed', 'ended'].includes(q.status));
+    const L = { ev: evs.map(e => [e.eventId, e.title, (e.next && e.next.when ? e.next.when : '') + (e.next && e.next.modeLabel ? '・' + e.next.modeLabel : ''), (e.cover || {}).style]), plan: plans.map(p => [p.planId, p.name, `${U.money(p.price)}・${p.durationMinutes || ''} 分鐘`, p.style]), quiz: qz.map(q => [q.templateId, q.name, q.intro ? String(q.intro).slice(0, 30) : '', q.style]) };
+    let tab = 'ev';
+    const list = () => L[tab].length ? L[tab].map(([id, t, sub, st]) => `<button type="button" class="nw-src" data-nsrc="${U.esc(id)}">${AUI.pl(st || 'custom1', 'nw-spl')}<span><b>${U.esc(t)}</b><small>${U.esc(sub || '')}</small></span><span class="tlink sm">帶入</span></button>`).join('') : `<p class="mnote">${tab === 'ev' ? '目前沒有還沒結束的課程活動' : tab === 'plan' ? '目前沒有上架的方案' : '目前沒有開放中的測驗'}</p>`;
+    await modal({ title: '從網站帶入', ok: '取消', cls: 'nw-imp',
+      html: `<div class="seg sm" style="margin-bottom:12px" data-ntab><button type="button" class="on" data-v="ev">課程活動</button><button type="button" data-v="plan">方案</button><button type="button" data-v="quiz">測驗</button></div><div class="nw-srcs" data-nlist>${list()}</div><p class="mnote">帶入只複製一次：之後改消息不會動到原本的內容。</p>`,
+      onOpen: (sc, close) => {
+        const bind = () => { paintPlanets(sc); sc.querySelectorAll('[data-nsrc]').forEach(b => b.addEventListener('click', async () => {
+          const id = b.dataset.nsrc, o = tab === 'ev' ? evs.find(e => e.eventId === id) : tab === 'plan' ? plans.find(p => p.planId === id) : qz.find(q => q.templateId === id);
+          if ((cur().title || cur().body) && !await confirmBox('要取代目前的內容嗎？', '<p>帶入會取代目前的標題、分類、內文、封面、按鈕與下架時間。</p>', '取代')) return;
+          close(null); apply(this.newsFrom(tab, o));
+        })); };
+        sc.querySelectorAll('[data-ntab] [data-v]').forEach(b => b.addEventListener('click', () => { tab = b.dataset.v; sc.querySelectorAll('[data-ntab] [data-v]').forEach(x => x.classList.toggle('on', x === b)); sc.querySelector('[data-nlist]').innerHTML = list(); bind(); }));
+        bind();
+      } });
+  },
+  async newsEdit(n, prefill) {
+    const x = this._news, isNew = !n || !n.newsId; n = Object.assign({ title: '', category: x.categories[0], body: '', cover: { type: 'planet', style: 'custom1', url: '' }, btnLabel: '', btnTarget: '', pinned: false, state: 'draft', publishAt: '', unpublishAt: '' }, n || {}, prefill || {});
     let evs = []; try { evs = (await api.call('adminGetEvents')).items || []; } catch (e) { }
-    const tgt = n.btnTarget || '', isUrl = /^https:\/\//.test(tgt), evHit = evs.find(e => tgt === '#/events/' + e.slug), linkSel = isUrl ? 'url' : evHit ? 'ev' : (NEWS_LINKS.find(l => l[0] === tgt) ? tgt : '');
+    const tgt = n.btnTarget || '', isUrl = /^https:\/\//.test(tgt), evHit = evs.find(e => tgt === '#/events/' + e.slug), known = NEWS_LINKS.find(l => l[0] === tgt), extra = tgt && !isUrl && !evHit && !known && /^#\//.test(tgt) ? [tgt, (n.btnLabel || '帶入的頁面') + '（' + tgt.replace(/^#\//, '') + '）'] : null, linkSel = isUrl ? 'url' : evHit ? 'ev' : extra ? tgt : (known ? tgt : '');
+    const LINKS = extra ? NEWS_LINKS.slice(0, -2).concat([extra], NEWS_LINKS.slice(-2)) : NEWS_LINKS;
     const sched = n.state === 'published' && n.publishAt && n.publishAt > U.iso();
-    const html = `<button class="x dw-x" data-dx aria-label="關閉">${ic('x')}</button><header class="dw-h"><div><h3>${isNew ? '新增消息' : '編輯消息'}</h3><small>儲存後網站「最新消息」立即更新；傳 LINE 在列表按「傳 LINE」</small></div></header>
+    const html = `<button class="x dw-x" data-dx aria-label="關閉">${ic('x')}</button><header class="dw-h"><div><h3>${isNew ? '新增消息' : '編輯消息'}</h3><small>儲存後網站「最新消息」立即更新；傳 LINE 在列表按「傳 LINE」</small></div><button type="button" class="btn soft sm nw-impb" data-nimp>${ic('down')}從網站帶入</button></header>
       <div class="dw-b nw-ed">
         <label class="fld"><span class="lbl"><span>標題<span class="req">*</span></span><small class="num"><span data-cnt="t">${n.title.length}</span> / 60</small></span><input class="inp" name="title" maxlength="60" value="${U.esc(n.title)}" placeholder="例如：12 月冬至工作坊開放報名"></label>
         <div class="fld"><span class="lbl"><span>分類</span></span><div class="seg sm wrap" data-ncat>${x.categories.map(c => `<button type="button" class="${c === n.category ? 'on' : ''}" data-c="${U.esc(c)}">${U.esc(c)}</button>`).join('')}</div></div>
@@ -5784,7 +5823,7 @@ Object.assign(Admin, {
         <div class="fld"><span class="lbl"><span>封面</span></span><div class="seg sm" data-cvt><button type="button" class="${n.cover.type !== 'image' ? 'on' : ''}" data-v="planet">星球</button><button type="button" class="${n.cover.type === 'image' ? 'on' : ''}" data-v="image">圖片網址</button></div>
           <div class="nw-sty" data-cvp ${n.cover.type === 'image' ? 'hidden' : ''}>${PLAN_STYLES.map(st => `<button type="button" class="${st === (n.cover.style || 'custom1') ? 'on' : ''}" data-st="${st}" aria-label="${st}">${AUI.pl(st, 'nw-spl')}</button>`).join('')}</div>
           <input class="inp" name="coverUrl" data-cvu ${n.cover.type === 'image' ? '' : 'hidden'} value="${U.esc(n.cover.url || '')}" placeholder="https://…（公開的圖片網址，LINE 卡片也會用）"></div>
-        <div class="fld"><span class="lbl"><span>按鈕</span><small>選填；網站與 LINE 卡片都會出現</small></span><div class="row2"><select class="inp" name="link">${NEWS_LINKS.map(l => `<option value="${l[0]}" ${l[0] === linkSel ? 'selected' : ''}>${l[1]}</option>`).join('')}</select><input class="inp" name="btnLabel" maxlength="16" value="${U.esc(n.btnLabel)}" placeholder="按鈕文字，例如：看課程"></div>
+        <div class="fld"><span class="lbl"><span>按鈕</span><small>選填；網站與 LINE 卡片都會出現</small></span><div class="row2"><select class="inp" name="link">${LINKS.map(l => `<option value="${l[0]}" ${l[0] === linkSel ? 'selected' : ''}>${l[1]}</option>`).join('')}</select><input class="inp" name="btnLabel" maxlength="16" value="${U.esc(n.btnLabel)}" placeholder="按鈕文字，例如：看課程"></div>
           <select class="inp" name="ev" ${linkSel === 'ev' ? '' : 'hidden'}>${evs.map(e => `<option value="${U.esc(e.slug)}" ${evHit && evHit.slug === e.slug ? 'selected' : ''}>${U.esc(e.title)}</option>`).join('')}</select>
           <input class="inp" name="url" ${linkSel === 'url' ? '' : 'hidden'} value="${isUrl ? U.esc(tgt) : ''}" placeholder="https://…"></div>
         <div class="fld"><span class="lbl"><span>發布</span></span><div class="seg sm" data-pub><button type="button" class="${n.state === 'draft' ? 'on' : ''}" data-v="draft">草稿</button><button type="button" class="${n.state === 'published' && !sched ? 'on' : ''}" data-v="now">立即發布</button><button type="button" class="${sched ? 'on' : ''}" data-v="at">排定時間</button></div>
@@ -5797,6 +5836,7 @@ Object.assign(Admin, {
       let cat = n.category, cvt = n.cover.type === 'image' ? 'image' : 'planet', sty = n.cover.style || 'custom1', pub = n.state === 'draft' ? 'draft' : sched ? 'at' : 'now';
       paintPlanets(d);
       const f = k => d.querySelector(`[name="${k}"]`);
+      d.querySelector('[data-nimp]').addEventListener('click', () => this.newsImport(() => ({ title: f('title').value.trim(), body: f('body').value.trim() }), patch => { const keep = { newsId: n.newsId, pinned: AUI.swOn(d.querySelector('[data-npin]')), state: n.state, publishAt: n.publishAt }; AUI.closeDrawer(); setTimeout(() => this.newsEdit(n.newsId ? Object.assign({}, n, keep) : null, Object.assign({ pinned: keep.pinned }, patch)), 250); }));
       f('title').addEventListener('input', () => { d.querySelector('[data-cnt="t"]').textContent = f('title').value.length; });
       d.querySelectorAll('[data-ncat] [data-c]').forEach(b => b.addEventListener('click', () => { cat = b.dataset.c; d.querySelectorAll('[data-ncat] [data-c]').forEach(x => x.classList.toggle('on', x === b)); }));
       d.querySelectorAll('[data-cvt] [data-v]').forEach(b => b.addEventListener('click', () => { cvt = b.dataset.v; d.querySelectorAll('[data-cvt] [data-v]').forEach(x => x.classList.toggle('on', x === b)); d.querySelector('[data-cvp]').hidden = cvt === 'image'; d.querySelector('[data-cvu]').hidden = cvt !== 'image'; }));
