@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.3.0-beta.2"
+  VERSION: "5.3.0-beta.3"
 };
 window.MIA_PART = 'front';
 window.MIA_SPLIT = true;
@@ -1730,7 +1730,7 @@ body.front .ev-w small { margin-left: 8px; color: var(--ink-3); }
 body.front .ev-p { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 body.front .ev-pr { font-size: 22px; color: var(--deep); }
 body.front .ev-old { color: var(--ink-3); font-size: 12.5px; }
-body.front .ev-go { white-space: nowrap; }
+body.front .ev-go { white-space: nowrap; } body.front .ev-side { scroll-margin-top: 90px; }
 body.front .ev-list { display: grid; gap: 16px; margin-top: 24px; }
 body.front .ev-fil { display: grid; gap: 10px; margin-top: 24px; }
 body.front .ev-fil .fchip b { margin-left: 6px; font-size: 11.5px; opacity: .7; }
@@ -3329,7 +3329,9 @@ const Front = {
     const line = App.isLine(), book = !!opt.book;
     const footer = line || book || opt.noFooter ? '' : this.footer();
     const tab = line || book ? '' : this.tabbar();
-    const lineBar = line && !book && !opt.bar ? `<div class="line-bar"><a class="btn pri full" href="#/book">開始預約${arrowIc()}</a></div>` : '';
+    /* v5.3：從 LINE 打開時的底部按鈕依頁面變化（設計稿第 24 排）：最新消息、課程活動預設不放；單則消息、活動詳情由頁面自己給；其他頁「預約服務」 */
+    const lb = opt.lineBar !== undefined ? opt.lineBar : (['news', 'events'].includes(opt.cls) ? false : `<a class="btn pri full" href="#/book">預約服務${arrowIc()}</a>`);
+    const lineBar = line && !book && !opt.bar && lb ? `<div class="line-bar">${lb}</div>` : '';
     document.body.classList.toggle('has-tab', !!tab);
     document.body.classList.toggle('has-bar', !!(opt.bar || lineBar));
     return `${opt.hideHeader ? '' : this.header({ noLogin: opt.noLogin })}<main id="main" class="pg ${opt.cls || ''}">${inner}</main>${footer}${tab}${opt.bar || lineBar}`;
@@ -4506,8 +4508,9 @@ Object.assign(Front, {
           ${ev.notes ? `<section class="card blk"><h2>報名須知</h2><p class="pre-l">${esc(this.fill(ev.notes))}</p></section>` : ''}
         </div>
         <aside class="ev-side card" data-side>${side()}</aside>
-      </div></div></section>`, { cls: 'events' });
+      </div></div></section>`, { cls: 'events', lineBar: ss.some(x => ['open', 'waitlist'].includes(x.state)) ? `<button type="button" class="btn pri full" data-toside>選擇場次報名 ↓</button>` : false });
     this.mount(root, html, r => {
+      r.querySelectorAll('[data-toside]').forEach(b => b.addEventListener('click', () => { const sd = r.querySelector('[data-side]'); if (sd) sd.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
       const bind = () => r.querySelectorAll('[data-ses]').forEach(b => b.addEventListener('click', () => { cur = b.dataset.ses; const box = r.querySelector('[data-side]'); box.innerHTML = side(); paintPlanets(box); bind(); }));
       bind();
     });
@@ -4706,7 +4709,7 @@ Object.assign(Front, {
         <div class="nw-ab"><p class="nw-meta"><span class="nw-cat ${newsCatCls(n.category)}">${esc(n.category)}</span><small class="num">${U.dot(String(n.publishAt).slice(0, 10))}</small></p>
         <h1 class="h-page sm">${esc(n.title)}</h1><div class="nw-body">${newsBodyHTML(n.body)}</div>${btn ? `<div class="nw-btn">${btn}</div>` : ''}</div></article>
       <p class="c"><a class="tlink sm" href="#/news">看其他消息${ic('right')}</a></p>
-    </div></section>`, { cls: 'news' });
+    </div></section>`, { cls: 'news', lineBar: btn ? btn.replace('class="btn pri"', 'class="btn pri full"') : false });
     this.mount(root, html);
   }
 });
