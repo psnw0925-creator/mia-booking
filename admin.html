@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.4.0-beta.2"
+  VERSION: "5.4.0-beta.3"
 };
 window.MIA_PART = 'admin';
 window.MIA_SPLIT = true;
@@ -5056,7 +5056,7 @@ Object.assign(Admin, {
         <td class="num">${s ? `${U.dot(s.lessons[0].date).slice(5)}（${WD[U.dow(s.lessons[0].date)]}）${s.lessons[0].start}${e.sessions.length > 1 ? `<small>共 ${e.sessions.length} 場</small>` : ''}` : '<span class="muted">尚未建立場次</span>'}</td>
         <td class="num">${e.status === 'soon' ? `<small>${U.dot(e.regOpen).slice(5)} 開放報名</small>` : tot[1] ? `${tot[0]} / ${tot[1]}${wait ? `<small class="warn-t">候補 ${wait}</small>` : ''}` : '—'}</td>
         <td class="num">${e.collected ? U.money(e.collected) : '—'}</td><td>${this.evChip(e.status)}</td>
-        <td class="acts">${e.sessions.length ? `<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}/roster">名單</a>` : ''}${e.sessions.some(z => !z.cancelled && !['ended', 'cancelled'].includes(z.state)) ? `<button class="btn ghost sm" data-ev2n="${e.eventId}">發成最新消息</button>` : ''}<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}">編輯</a></td></tr>`; };
+        <td class="acts">${e.sessions.length ? `<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}/roster">名單</a>` : ''}${!['ended', 'draft'].includes(e.status) && e.state !== 'draft' ? `<button class="btn ghost sm" data-ev2n="${e.eventId}">發成最新消息</button>` : ''}<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}">編輯</a></td></tr>`; };
     const tab = (k, l) => `<button type="button" data-evst="${k}" class="${F.st === k ? 'on' : ''}">${l}<b>${k ? cnt(k) : x.items.length}</b></button>`;
     const html = this.shell({ title: '課程', mirror: '首頁課程區塊・課程活動頁・我的預約', pri: `<a class="btn pri sm" href="#/admin/events/e/new">${ic('plus')}<span>新增活動</span></a>` }, `
       <div class="kpis ev-kpis">
@@ -5118,7 +5118,7 @@ Object.assign(Admin, {
     </div>`;
     const cv = W.cover || {}, st = isNew ? 'draft' : W.status;
     const html = this.shell({ title: '課程', mirror: '課程活動頁・活動詳情・報名', sub: `<a class="lnk" href="#/admin/events">${ic('left')}課程</a>`,
-      actions: `${this.evChip(st)}${!isNew && W.state !== 'draft' ? `<a class="btn ghost sm" href="#/events/${U.esc(W.slug)}" target="_blank" rel="noopener">前台預覽</a>` : ''}${isNew ? '' : `<button class="btn ghost sm" data-evcopy>複製活動</button>`}${!isNew && W.sessions.some(s => s.taken) ? `<a class="btn ghost sm" href="#/admin/events/e/${W.eventId}/roster">報名名單</a>` : ''}`,
+      actions: `${this.evChip(st)}${!isNew && W.state !== 'draft' ? `<a class="btn ghost sm" href="#/events/${U.esc(W.slug)}" target="_blank" rel="noopener">前台預覽</a>` : ''}${isNew ? '' : `${W.state !== 'draft' ? '<button class="btn ghost sm" data-ev2n>發成最新消息</button>' : ''}<button class="btn ghost sm" data-evcopy>複製活動</button>`}${!isNew && W.sessions.some(s => s.taken) ? `<a class="btn ghost sm" href="#/admin/events/e/${W.eventId}/roster">報名名單</a>` : ''}`,
       pri: `<button class="btn pri sm" data-evsave>${ic('check')}<span>儲存</span></button>` }, `
       <div class="g2 qz ev-ed">
         <div class="stack">
@@ -5156,6 +5156,7 @@ Object.assign(Admin, {
       </div>`);
     this.mount(root, html, r => {
       AUI.bindCounters(r); AUI.bindSwitches(r);
+      r.querySelectorAll('[data-ev2n]').forEach(b => b.addEventListener('click', async () => { try { if (this.evSync) this.evSync(); this._news = await api.call('adminGetNews'); this.newsEdit(null, this.newsFrom('ev', this._evW)); } catch (er) { errToast(er); } }));   /* v5.4：活動編輯頁也能「發成最新消息」 */
       ['audience', 'outline'].forEach(k => AUI.bindList(r, k, [{ k: 'v' }]));
       const re = () => { this.evSync(); this.evRender(); };
       r.querySelectorAll('[data-ecov]').forEach(b => b.addEventListener('click', () => { this.evSync(); W.cover.type = b.dataset.ecov; this.evRender(); }));
