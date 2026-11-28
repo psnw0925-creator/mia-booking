@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.5.0-beta.1"
+  VERSION: "5.5.0-beta.2"
 };
 window.MIA_PART = 'admin';
 window.MIA_SPLIT = true;
@@ -2125,7 +2125,9 @@ const EV_STATUS = { ext: ['企劃活動', 'info'], draft: ['草稿', 'gray'], op
 /* 場次時間文字：單堂「2026.11.22（六）14:00 – 16:00」；系列課「12.03／12.10／12.17（三）20:00 – 21:30」 */
 const evWhen = (s, withYear) => { const ls = (s && s.lessons) || []; if (!ls.length) return '—'; const f = ls[0]; if (ls.length === 1) return `${U.dateLabel(f.date, withYear)} ${f.start} – ${f.end}`; const sameT = ls.every(x => x.start === f.start && x.end === f.end); return `${ls.map(x => U.dot(x.date).slice(5)).join('／')}${sameT ? `（${WD[U.dow(f.date)]}）${f.start} – ${f.end}` : ''}`; };
 /* v5.5：外部平台活動的期間文字「12.01 – 01.31」 */
-const evExtWhen = ev => { const a = ev.extStart ? U.dot(ev.extStart).slice(5) : '', b = ev.extEnd ? U.dot(ev.extEnd).slice(5) : ''; return a && b ? (a === b ? a : a + ' – ' + b) : a ? a + ' 起' : b ? '至 ' + b : ''; };
+/* 跨年或不是今年時加上年份，例如「2026.11.30 – 2027.12.31」 */
+const evExtWhen = ev => { const y = U.today().slice(0, 4), s = ev.extStart || '', e = ev.extEnd || '', full = (s && e && s.slice(0, 4) !== e.slice(0, 4)) || [s, e].some(d => d && d.slice(0, 4) !== y);
+  const f = d => d ? (full ? U.dot(d) : U.dot(d).slice(5)) : ''; const a = f(s), b = f(e); return a && b ? (a === b ? a : a + ' – ' + b) : a ? a + ' 起' : b ? '至 ' + b : ''; };
 const EV_NOTES_PAID = '報名需全額付清，付款完成才保留名額。\n每個 LINE 帳號限報名本人 1 位。\n開課 7 天前可在「我的預約」取消並全額退費；之後不退費，可聯繫 Mia 轉換其他場次一次。';
 const EV_NOTES_FREE = '這是免費活動，送出報名就保留名額，不需要付款。\n每個 LINE 帳號限報名本人 1 位。\n如果臨時不能參加，請在「我的預約」取消，把位子讓給其他朋友。';
 const evTimes = s => { const ls = (s && s.lessons) || []; return ls.length > 1 ? ls.map(x => `${U.dot(x.date).slice(5)} ${x.start} – ${x.end}`).join('、') : ls[0] ? `${ls[0].start} – ${ls[0].end}` : ''; };
