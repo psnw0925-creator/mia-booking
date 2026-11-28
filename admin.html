@@ -24,7 +24,7 @@ window.MIA_CONFIG = {
   TIMEZONE: "Asia/Taipei",
   FORCE_DEMO: false,
   TRACKING: true,
-  VERSION: "5.4.0-beta.4"
+  VERSION: "5.5.0-beta.1"
 };
 window.MIA_PART = 'admin';
 window.MIA_SPLIT = true;
@@ -1561,6 +1561,16 @@ body.admin .les-l { display: grid; gap: 6px; }
 body.admin .les { display: flex; align-items: center; gap: 6px; } body.admin .les .inp { width: auto; min-width: 0; flex: 1 1 auto; } body.admin .les .inp[type="date"] { flex: 1.6 1 140px; }
 body.admin .ev-cvpv { width: 100%; max-width: 360px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; margin-top: 8px; }
 body.admin .ev-ntf p { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 6px; font-size: 13px; } body.admin .ev-ntf small { color: var(--ink-3); }
+body.admin .ev-tg.ex { background: #F3E8FF; color: #6A3FA0; }
+body.admin .ev-ntf2 { display: flex; flex-direction: column; gap: 6px; }
+body.admin .ntf-r { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line, #E8EEF6); }
+body.admin .ntf-r .t { display: flex; flex-direction: column; gap: 2px; min-width: 0; } body.admin .ntf-r b { font-size: 13px; } body.admin .ntf-r small { color: var(--ink-3); font-size: 12px; }
+body.admin .ntf-r.cus { background: #FFFBF1; border-color: #E8D9B5; } body.admin .ntf-r.off b { color: var(--ink-3); }
+body.admin .ntf-r .tlink[disabled] { opacity: .4; pointer-events: none; }
+body.admin .ntf-tg { display: inline-flex; height: 18px; align-items: center; padding: 0 7px; margin-left: 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: #F6E7C8; color: #7A5A36; vertical-align: 1px; }
+body.admin .ntf-ab { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; margin-top: 8px; }
+body.admin .ev-urlrow { display: flex; gap: 8px; align-items: center; } body.admin .ev-urlrow .inp { flex: 1; min-width: 0; }
+body.admin .ev-freenote { margin: 10px 0; background: #EAF6EE; color: #2F6B47; } body.admin .ev-freenote svg { flex: none; margin-top: 3px; }
 body.admin .ev-rh { font-size: 18px; margin: 0 0 12px; }
 body.admin .ev-stabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 body.admin .ev-stab { display: grid; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line-2); background: #fff; text-decoration: none; color: inherit; font-size: 13px; }
@@ -2061,7 +2071,7 @@ const VAR_DEFS = {
   ]
 };
 /* 只屬於諮詢預約的變數，以及只屬於課程通知的變數（後台與 Code.gs 用同一份規則） */
-const EV_KEYS = ['EV_PAID', 'EV_ATM', 'EV_TRANSFER', 'EV_RECHECK', 'EV_WAITLIST', 'EV_OFFER', 'EV_REMIND_ONLINE', 'EV_REMIND_ONSITE', 'EV_DAY', 'EV_CHANGED'];
+const EV_KEYS = ['EV_PAID', 'EV_ATM', 'EV_TRANSFER', 'EV_RECHECK', 'EV_WAITLIST', 'EV_OFFER', 'EV_REMIND_ONLINE', 'EV_REMIND_ONSITE', 'EV_DAY', 'EV_CHANGED', 'EV_FREE', 'EV_FREE_OFFER'];
 const BK_KEYS = ['BOOKING_CREATED', 'DEPOSIT_CONFIRMED', 'BALANCE_CONFIRMED', 'PRE_REMINDER', 'DAY_REMINDER', 'COMPANION_START', 'COMPANION_END', 'RESCHEDULED', 'NO_SHOW'];
 VAR_DEFS.notify.forEach(d => {
   if (['方案', '日期', '時間', '主題', '期待改變', '預約編號', '本筆訂金', '本筆尾款', '尾款期限', '我的預約'].includes(d.k)) { d.only = BK_KEYS; d.onlyLabel = '諮詢預約的通知'; }
@@ -2089,7 +2099,7 @@ const quizBuild = (t, bank, opts, all) => (t.questionIds || []).map(id => bank.f
 /* ===== v3 課程與活動共用規則（與 Code.gs ev*_ 相同） ===== */
 const EV_SEAT = ['HOLD', 'PAID', 'OFFER'];   /* 佔名額的報名狀態 */
 const EV_REG_LABEL = { HOLD: ['待付款', 'warn'], PAID: ['已付款', 'ok'], WAITLIST: ['候補中', 'info'], OFFER: ['遞補待付款', 'warn'], CANCELLED: ['已取消', 'gray'], EXPIRED: ['逾時未付款', 'gray'] };
-const EV_METHODS = { ipass: { label: 'iPASS MONEY', sub: '轉帳到 Mia 的 iPASS MONEY，回填末五碼後由 Mia 確認', provider: 'iPASS MONEY' }, bank: { label: '銀行轉帳', sub: '轉帳到 Mia 的銀行帳戶（ATM、網銀都可以），回填末五碼後由 Mia 確認', provider: '銀行轉帳' }, linepay: { label: 'LINE Pay', sub: '跳轉 LINE Pay 付款，完成後自動回到網站', provider: 'LINE Pay' }, card: { label: '信用卡', sub: '由綠界 ECPay 處理', provider: '綠界' }, atm: { label: 'ATM 虛擬帳號', sub: '由綠界產生專屬帳號，入帳自動確認', provider: '綠界' } };
+const EV_METHODS = { ipass: { label: 'iPASS MONEY', sub: '轉帳到 Mia 的 iPASS MONEY，回填末五碼後由 Mia 確認', provider: 'iPASS MONEY' }, bank: { label: '銀行轉帳', sub: '轉帳到 Mia 的銀行帳戶（ATM、網銀都可以），回填末五碼後由 Mia 確認', provider: '銀行轉帳' }, linepay: { label: 'LINE Pay', sub: '跳轉 LINE Pay 付款，完成後自動回到網站', provider: 'LINE Pay' }, card: { label: '信用卡', sub: '由綠界 ECPay 處理', provider: '綠界' }, atm: { label: 'ATM 虛擬帳號', sub: '由綠界產生專屬帳號，入帳自動確認', provider: '綠界' }, free: { label: '免費', sub: '', provider: '免費' } };
 const EV_HOLD_MIN = { linepay: 30, card: 30, atm: 24 * 60, ipass: 24 * 60, bank: 24 * 60 }, EV_OFFER_HOURS = 24;
 const MANUAL_METHODS = ['ipass', 'bank'];
 /* v5.1：舊資料的 LINE Pay 換成 iPASS MONEY（與 Code.gs evMethodsRaw_ 相同） */
@@ -2097,7 +2107,7 @@ const evMethodsRaw = arr => { const out = []; (arr || []).forEach(m => { m = m =
 const EV_SLUG_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
 const evFirst = s => ((s && s.lessons) || [])[0] || {};
 const evLast = s => { const l = (s && s.lessons) || []; return l[l.length - 1] || {}; };
-const evPrice = (ev, today) => { today = today || U.today(); const early = +ev.earlyPrice > 0 && +ev.earlyPrice < +ev.price && !!ev.earlyUntil && today <= ev.earlyUntil; return { amount: early ? +ev.earlyPrice : +ev.price, early, regular: +ev.price }; };
+const evPrice = (ev, today) => { if (ev && ev.free) return { amount: 0, early: false, regular: 0 }; today = today || U.today(); const early = +ev.earlyPrice > 0 && +ev.earlyPrice < +ev.price && !!ev.earlyUntil && today <= ev.earlyUntil; return { amount: early ? +ev.earlyPrice : +ev.price, early, regular: +ev.price }; };
 const evModeLabel = s => s.mode === 'onsite' ? '現場' + (s.city ? '・' + s.city : '') : '線上・Zoom';
 /* 場次狀態：cancelled 已取消・ended 已結束・closed 報名截止・soon 尚未開放・full 額滿・waitlist 額滿可候補・open 報名中 */
 const evSesState = (ev, s, taken, now) => {
@@ -2111,9 +2121,13 @@ const evSesState = (ev, s, taken, now) => {
 };
 const EV_SES_LABEL = { open: '報名中', waitlist: '額滿・可候補', full: '額滿', soon: '即將開放報名', closed: '報名截止', ended: '已結束', cancelled: '已取消' };
 const evStatus = (ev, states) => ev.state === 'draft' ? 'draft' : ev.state === 'closed' ? 'off' : !states.length ? 'nosession' : states.includes('open') ? 'open' : states.includes('waitlist') ? 'waitlist' : states.includes('soon') ? 'soon' : states.every(x => x === 'ended' || x === 'cancelled') ? 'ended' : states.includes('full') ? 'full' : 'closed';
-const EV_STATUS = { draft: ['草稿', 'gray'], open: ['報名中', 'ok'], waitlist: ['額滿・可候補', 'warn'], full: ['額滿', 'warn'], soon: ['排程中', 'info'], closed: ['報名截止', 'gray'], ended: ['已結束', 'gray'], off: ['已關閉', 'gray'], nosession: ['尚未建立場次', 'gray'] };
+const EV_STATUS = { ext: ['企劃活動', 'info'], draft: ['草稿', 'gray'], open: ['報名中', 'ok'], waitlist: ['額滿・可候補', 'warn'], full: ['額滿', 'warn'], soon: ['排程中', 'info'], closed: ['報名截止', 'gray'], ended: ['已結束', 'gray'], off: ['已關閉', 'gray'], nosession: ['尚未建立場次', 'gray'] };
 /* 場次時間文字：單堂「2026.11.22（六）14:00 – 16:00」；系列課「12.03／12.10／12.17（三）20:00 – 21:30」 */
 const evWhen = (s, withYear) => { const ls = (s && s.lessons) || []; if (!ls.length) return '—'; const f = ls[0]; if (ls.length === 1) return `${U.dateLabel(f.date, withYear)} ${f.start} – ${f.end}`; const sameT = ls.every(x => x.start === f.start && x.end === f.end); return `${ls.map(x => U.dot(x.date).slice(5)).join('／')}${sameT ? `（${WD[U.dow(f.date)]}）${f.start} – ${f.end}` : ''}`; };
+/* v5.5：外部平台活動的期間文字「12.01 – 01.31」 */
+const evExtWhen = ev => { const a = ev.extStart ? U.dot(ev.extStart).slice(5) : '', b = ev.extEnd ? U.dot(ev.extEnd).slice(5) : ''; return a && b ? (a === b ? a : a + ' – ' + b) : a ? a + ' 起' : b ? '至 ' + b : ''; };
+const EV_NOTES_PAID = '報名需全額付清，付款完成才保留名額。\n每個 LINE 帳號限報名本人 1 位。\n開課 7 天前可在「我的預約」取消並全額退費；之後不退費，可聯繫 Mia 轉換其他場次一次。';
+const EV_NOTES_FREE = '這是免費活動，送出報名就保留名額，不需要付款。\n每個 LINE 帳號限報名本人 1 位。\n如果臨時不能參加，請在「我的預約」取消，把位子讓給其他朋友。';
 const evTimes = s => { const ls = (s && s.lessons) || []; return ls.length > 1 ? ls.map(x => `${U.dot(x.date).slice(5)} ${x.start} – ${x.end}`).join('、') : ls[0] ? `${ls[0].start} – ${ls[0].end}` : ''; };
 const evGcal = (ev, s) => { const f = evFirst(s), z = (d, t) => d.replace(/-/g, '') + 'T' + t.replace(':', '') + '00'; return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(ev.title) + '&dates=' + z(f.date, f.start) + '/' + z(f.date, f.end) + '&ctz=Asia/Taipei&location=' + encodeURIComponent(s.mode === 'onsite' ? [s.venue, s.address].filter(Boolean).join(' ') : 'Zoom 線上'); };
 /* ===== v3 入口網址（/go/代號）：LINE 圖文選單每格貼固定網址，目的地在後台設定（與 Code.gs ENTRY_* 相同） ===== */
@@ -2251,7 +2265,7 @@ function varCheckDeep(v, scope, tplKey) {
   const walk = x => { if (typeof x === 'string') { const r = varCheck(x, scope, tplKey); out.errors.push(...r.errors); out.infos.push(...r.infos); } else if (Array.isArray(x)) x.forEach(walk); else if (x && typeof x === 'object') Object.keys(x).forEach(k => walk(x[k])); };
   walk(v); return out;
 }
-const TPL_NAME = { EV_PAID: '報名成立・付款完成', EV_ATM: '報名成立・ATM 待付款', EV_TRANSFER: '報名成立・轉帳待付款', EV_RECHECK: '轉帳待確認・請再確認', EV_WAITLIST: '加入候補', EV_OFFER: '候補遞補', EV_REMIND_ONLINE: '行前提醒・線上', EV_REMIND_ONSITE: '行前提醒・現場', EV_DAY: '課程當日提醒', EV_CHANGED: '場次異動／取消', BOOKING_CREATED: '預約成立', DEPOSIT_CONFIRMED: '訂金確認', BALANCE_CONFIRMED: '尾款確認', PRE_REMINDER: '服務前提醒', DAY_REMINDER: '服務當日提醒', COMPANION_START: '陪伴期開始', COMPANION_END: '陪伴期結束', RESCHEDULED: '改期確認', NO_SHOW: '未出席通知' };
+const TPL_NAME = { EV_FREE: '報名成立・免費活動', EV_FREE_OFFER: '候補成功・免費活動', EV_PAID: '報名成立・付款完成', EV_ATM: '報名成立・ATM 待付款', EV_TRANSFER: '報名成立・轉帳待付款', EV_RECHECK: '轉帳待確認・請再確認', EV_WAITLIST: '加入候補', EV_OFFER: '候補遞補', EV_REMIND_ONLINE: '行前提醒・線上', EV_REMIND_ONSITE: '行前提醒・現場', EV_DAY: '課程當日提醒', EV_CHANGED: '場次異動／取消', BOOKING_CREATED: '預約成立', DEPOSIT_CONFIRMED: '訂金確認', BALANCE_CONFIRMED: '尾款確認', PRE_REMINDER: '服務前提醒', DAY_REMINDER: '服務當日提醒', COMPANION_START: '陪伴期開始', COMPANION_END: '陪伴期結束', RESCHEDULED: '改期確認', NO_SHOW: '未出席通知' };
 
 /* Template rendering — §6.2 */
 function renderTemplate(tpl, b, ctx) {
@@ -2338,6 +2352,8 @@ const SEED_EV_TEMPLATES = [
   ['EV_REMIND_ONLINE', '行前提醒・線上', '課程與活動', 'before_event', 'card', '{姓名} 你好，明天就要上課囉。\n{活動名稱}\n{場次日期} {上課時間}\n請提前 5 分鐘進入 Zoom，準備耳機與安靜的空間。', '開啟 Zoom 連結', '{Zoom連結}', '', '', true, 1, 0, '20:00'],
   ['EV_REMIND_ONSITE', '行前提醒・現場', '課程與活動', 'before_event', 'card', '{姓名} 你好，明天就要上課囉。\n{活動名稱}\n{場次日期} {上課時間}\n地點：{地點}\n{報到說明}', '開啟 Google 地圖', '{地圖連結}', '', '', true, 1, 0, '20:00'],
   ['EV_DAY', '課程當日提醒', '課程與活動', 'event_day', 'text', '{姓名} 你好，今天 {上課時間} 見！{活動名稱}・{上課形式}', '', '', '', '', false, 0, 2, ''],
+  ['EV_FREE', '報名成立・免費活動', '課程與活動', 'event', 'card', '{姓名} 你好，已收到你的報名，名額已為你保留。\n活動：{活動名稱}\n時間：{場次日期} {上課時間}\n形式：{上課形式}\n這是免費活動，不需要付款。如果臨時不能來，請在「我的報名」取消，把位子讓給其他朋友。\n報名編號：{報名編號}', '查看我的報名', '{我的報名}', '', '', true, 0, 0, ''],
+  ['EV_FREE_OFFER', '候補成功・免費活動', '課程與活動', 'event', 'card', '{姓名} 你好，「{活動名稱}」有名額了，已直接為你報名成立！\n時間：{場次日期} {上課時間}\n形式：{上課形式}\n如果不能參加，請在「我的報名」取消，讓給下一位。\n報名編號：{報名編號}', '查看我的報名', '{我的報名}', '', '', true, 0, 0, ''],
   ['EV_CHANGED', '場次異動／取消', '課程與活動', 'event', 'card', '{姓名} 你好，你報名的「{活動名稱}」有異動：\n{異動說明}\n報名編號：{報名編號}', '查看我的報名', '{我的報名}', '', '', true]
 ];
 const DEMO_USERS = {
@@ -2959,6 +2975,140 @@ const Sky = (function () {
   return api;
 })();
 window.Sky = Sky;
+
+/* ---- mock-v55.js ---- */
+/* ===================== v5.5 展示模式：免費場次、外部平台、這個活動的通知（與 Code.gs v5.5 相同規則） ===================== */
+if (typeof MockBackend !== 'undefined') (() => {   /* 正式網站沒有假資料引擎，這段不執行 */
+  const P = MockBackend.prototype;
+  const mig0 = P.migrate;
+  P.migrate = function (db) {
+    const r = mig0.call(this, db), d = r || db;
+    if (d && d.events && d.eventSessions && !d._v55) {
+      d._v55 = 1; this._dirty = true;
+      const T = U.today(), now = U.iso(), mx = Math.max(0, ...d.events.map(x => +x.sortOrder || 0));
+      if (!d.events.some(e => e.eventId === 'EVT-FREE')) {
+        d.events.push({ eventId: 'EVT-FREE', slug: 'solstice-talk', title: '冬至・線上分享會', summary: '一小時的線上分享，陪你好好收尾這一年。', intro: '免費的線上分享會：聊聊這一年的起伏，帶一個小練習回家。', audience: ['想好好回顧這一年的人'], outline: ['這一年的三個片段', '一個小練習'], cover: { type: 'planet', style: 'custom2', url: '' },
+          price: 0, earlyPrice: 0, earlyUntil: '', methods: [], regOpen: '', regCloseDays: 0, refundDays: 0, notes: EV_NOTES_FREE, state: 'published', sortOrder: mx + 1, createdAt: now, updatedAt: now,
+          regMode: 'here', free: true, origPrice: 800, notify: { EV_DAY: { off: true } }, clicks: 0 });
+        d.eventSessions.push({ sessionId: 'SES-FREE1', eventId: 'EVT-FREE', mode: 'online', lessons: [{ date: U.addDays(T, 8), start: '20:00', end: '21:00' }], capacity: 30, waitlist: true, zoomLink: 'https://zoom.us/j/82233445566', venue: '', city: '', address: '', mapUrl: '', checkin: '', state: 'open', sortOrder: 1 });
+      }
+      if (!d.events.some(e => e.eventId === 'EVT-EXT')) {
+        d.events.push({ eventId: 'EVT-EXT', slug: 'winter-plan', title: '冬日陪伴企劃（示意）', summary: '兩個月的線上陪伴企劃，報名與內容在企劃專屬網站。', intro: '兩個月的時間，陪你把這一年好好收尾，再輕輕走進新的一年。', audience: [], outline: [], cover: { type: 'planet', style: 'custom5', url: '' },
+          price: 0, earlyPrice: 0, earlyUntil: '', methods: [], regOpen: '', regCloseDays: 0, refundDays: 0, notes: '', state: 'published', sortOrder: mx + 2, createdAt: now, updatedAt: now,
+          regMode: 'ext', extUrl: 'https://example.com/', extLabel: '前往活動網站', extStart: T, extEnd: U.addDays(T, 60), extNote: '線上・兩個月的陪伴企劃', clicks: 12 });
+      }
+    }
+    return r;
+  };
+  const evOut0 = P.evOut;
+  P.evOut = function (ev, admin) {
+    const o = evOut0.call(this, ev, admin);
+    o.regMode = ev.regMode === 'ext' ? 'ext' : 'here'; o.free = o.regMode === 'here' && !!ev.free; o.origPrice = o.free ? (+ev.origPrice || 0) : 0;
+    ['extUrl', 'extStart', 'extEnd', 'extNote', 'linkUrl'].forEach(k => { o[k] = ev[k] || ''; });
+    o.extLabel = ev.extLabel || '前往活動網站'; o.linkLabel = ev.linkUrl ? (ev.linkLabel || '看更多') : '';
+    if (o.free) { o.amount = 0; o.early = false; }
+    if (o.regMode === 'ext') { o.sessions = []; o.next = null; o.modes = []; o.methods = []; if (ev.state === 'published') o.status = ev.extEnd && U.today() > ev.extEnd ? 'ended' : 'ext'; }
+    if (admin) { o.notify = U.clone(ev.notify || {}); o.clicks = +ev.clicks || 0; }
+    return o;
+  };
+  P.a_getEvents = function () {
+    const key = e => e.regMode === 'ext' ? (e.extStart || U.today()) : ((e.next && evFirst(e.next).date) || '9');
+    return { items: this.db.events.filter(e => e.state === 'published').map(e => this.evOut(e)).filter(e => e.status !== 'ended' && (e.regMode === 'ext' ? !!e.extUrl : e.sessions.length)).sort((a, b) => key(a).localeCompare(key(b))) };
+  };
+  P.evFreeConfirm = function (r, key, by) { Object.assign(r, { status: 'PAID', method: 'free', amount: 0, early: false, paidAt: U.iso(), holdUntil: '', offerUntil: '', updatedAt: U.iso() }); this.evNotify(key, r, by || 'system'); return r; };
+  const reg0 = P.a_registerEvent;
+  P.a_registerEvent = function (d, ctx) {
+    const s = this.evSes(d.sessionId), ev = s && this.evEv(s.eventId);
+    if (ev && ev.regMode === 'ext') fail('EVENT_CLOSED');
+    const out = reg0.call(this, d, ctx);
+    if (ev && ev.free) { const r = this.db.registrations.find(x => x.regId === out.registration.regId); if (r.status === 'HOLD') this.evFreeConfirm(r, 'EV_FREE', 'customer'); return { registration: this.evRegOut(r) }; }
+    return out;
+  };
+  const pay0 = P.a_payEvent;
+  P.a_payEvent = function (d, ctx) {
+    this.needUser(ctx);
+    const r = this.db.registrations.find(x => x.regId === d.regId && x.lineUserId === ctx.uid), ev = r && this.evEv(r.eventId);
+    if (ev && ev.free) { if (['HOLD', 'OFFER'].includes(r.status)) this.evFreeConfirm(r, r.status === 'OFFER' ? 'EV_FREE_OFFER' : 'EV_FREE', 'customer'); if (r.status !== 'PAID') fail('EVENT_HOLD_EXPIRED'); return { registration: this.evRegOut(r), pay: { type: 'paid' } }; }
+    return pay0.call(this, d, ctx);
+  };
+  const offer0 = P.evOffer;
+  P.evOffer = function (sessionId, by) {
+    const s = this.evSes(sessionId), ev = s && this.evEv(s.eventId);
+    if (!ev || !ev.free) return offer0.call(this, sessionId, by);
+    const n0 = this.db.notifyLog.length, w = offer0.call(this, sessionId, by); if (!w) return null;
+    this.db.notifyLog = this.db.notifyLog.filter((n, i) => i < n0 || !(n.templateKey === 'EV_OFFER' && n.bookingId === w.regId));
+    this.evFreeConfirm(w, 'EV_FREE_OFFER', by); this.evOffer(sessionId, by); return w;
+  };
+  const ow0 = P.a_adminOfferWaitlist;
+  P.a_adminOfferWaitlist = function (d, ctx) {
+    const r = this.db.registrations.find(x => x.regId === d.regId), ev = r && this.evEv(r.eventId);
+    if (!ev || !ev.free) return ow0.call(this, d, ctx);
+    if (r.status !== 'WAITLIST') fail('BAD_REQUEST', '這筆不在候補名單');
+    this.evFreeConfirm(r, 'EV_FREE_OFFER', ctx.uid); this.audit(ctx, 'adminOfferWaitlist', 'event', r.regId, {}, { status: 'PAID', free: true }); return { ok: true };
+  };
+  const ro0 = P.evRegOut;
+  P.evRegOut = function (r) {
+    const o = ro0.call(this, r), ev = this.evEv(r.eventId) || {};
+    if (ev.free) o.free = true;
+    if (r.method === 'free') {
+      const s = this.evSes(r.sessionId) || {}, f = evFirst(s), n = U.nowParts();
+      o.refundable = false; o.methodLabel = '免費';
+      if (r.status === 'PAID') { o.statusLabel = '已報名'; o.canCancel = !!f.date && (n.date < f.date || (n.date === f.date && n.time < (f.start || '00:00'))); }
+    }
+    return o;
+  };
+  const vars0 = P.evVars;
+  P.evVars = function (r, extra) { const v = vars0.call(this, r, extra); if (r.method === 'free') Object.assign(v, { '本筆金額': '免費', '金額': '免費', '付款方式': '免費' }); return v; };
+  const nt0 = P.evNotify;
+  P.evNotify = function (key, r, by, extra) {
+    const ev = this.evEv(r.eventId) || {}, ov = (ev.notify || {})[key] || {};
+    if (ov.off && by !== 'adminTest') { this.db.notifyLog.push({ logId: 'N-' + U.rid(5), ts: U.iso(), bookingId: r.regId, lineUserId: r.lineUserId, templateKey: key, kind: 'push', status: 'SKIPPED', reason: 'event_disabled', messageJson: '', httpCode: 0, responseBody: 'demo', triggeredBy: by || 'system' }); return { status: 'SKIPPED', reason: 'event_disabled' }; }
+    const body = (this._bodyOv && this._bodyOv.key === key ? this._bodyOv.body : '') || ov.body || '', t = body && this.db.templates.find(x => x.templateKey === key);
+    if (!t) return nt0.call(this, key, r, by, extra);
+    const keep = t.body; t.body = body;
+    try { return nt0.call(this, key, r, by, extra); } finally { t.body = keep; }
+  };
+  P.a_adminEvTestNotify = function (d, ctx) {
+    const ev = this.evEv(d.eventId); if (!ev) fail('BAD_REQUEST', '請先儲存活動');
+    if (!EV_KEYS.includes(d.key)) fail('NOT_FOUND');
+    const body = String(d.body || '').trim(); if (body.length > 500) fail('BAD_REQUEST', '內容請在 500 字以內'); if (body) this.varGuard(body, 'notify', d.key);
+    const s = this.evSessions(ev.eventId)[0] || {};
+    const r = { regId: 'EV-SAMPLE', eventId: ev.eventId, sessionId: s.sessionId || '', lineUserId: ctx.uid, name: (this.cust(ctx.uid) || {}).name || 'Mia', amount: ev.free ? 0 : +ev.price, method: ev.free ? 'free' : 'ipass', status: 'PAID', holdUntil: U.iso(new Date(Date.now() + 864e5)), waitAt: '' };
+    this._bodyOv = { key: d.key, body: body || ((ev.notify || {})[d.key] || {}).body || '' };
+    try { this.evNotify(d.key, r, 'adminTest', { '候補順位': '2', '異動說明': '場次改到 11.29（六）14:00' }); } finally { this._bodyOv = null; }
+    return {};
+  };
+  P.a_evLinkClick = function (d) { const e = this.evEv(d.eventId); if (!e || e.state !== 'published') return { ok: false }; e.clicks = (+e.clicks || 0) + 1; return { ok: true }; };
+  const save0 = P.a_adminSaveEvent;
+  P.a_adminSaveEvent = function (d, ctx) {
+    const e = d.event || {}, ext = e.regMode === 'ext', free = !ext && !!e.free, old = e.eventId && this.evEv(e.eventId);
+    const lim = (v, n, l) => { v = String(v == null ? '' : v).trim(); if (v.length > n) fail('BAD_REQUEST', `${l}請在 ${n} 字以內`); return v; };
+    const hasReg = !!old && this.db.registrations.some(r => r.eventId === old.eventId), isD = x => /^\d{4}-\d{2}-\d{2}$/.test(x || ''), https = x => /^https:\/\/\S+$/.test(x || '');
+    if (hasReg && (old.regMode === 'ext') !== ext) fail('BAD_REQUEST', '已經有人報名，不能改成外部平台；要改請先「複製活動」');
+    if (hasReg && !!old.free !== free) fail('BAD_REQUEST', '已經有人報名，不能在收費、免費之間切換；要改請先「複製活動」');
+    let x;
+    if (ext) {
+      const url = String(e.extUrl || '').trim(), st = e.extStart || '', en = e.extEnd || '';
+      if (url && !https(url)) fail('BAD_REQUEST', '活動網址需為 https 開頭');
+      if ((st && !isD(st)) || (en && !isD(en))) fail('BAD_REQUEST', '活動日期格式不正確'); if (st && en && en < st) fail('BAD_REQUEST', '活動結束日要在開始日之後');
+      if (e.state === 'published') { if (!url) fail('BAD_REQUEST', '請填寫活動網址'); if (!en) fail('BAD_REQUEST', '請填寫活動結束日（過了會自動收起）'); }
+      x = { regMode: 'ext', free: false, origPrice: 0, extUrl: url, extLabel: lim(e.extLabel, 12, '按鈕文字'), extStart: st, extEnd: en, extNote: lim(e.extNote, 40, '時間與地點說明'), linkUrl: '', linkLabel: '', notify: {} };
+    } else {
+      const lu = String(e.linkUrl || '').trim(); if (lu && !https(lu)) fail('BAD_REQUEST', '延伸連結的網址需為 https 開頭');
+      const nt = {}; Object.keys(e.notify || {}).forEach(k => { const v = e.notify[k] || {}; if (!EV_KEYS.includes(k)) return; const b = String(v.body || '').trim(); if (b.length > 500) fail('BAD_REQUEST', `「${TPL_NAME[k] || k}」的內容請在 500 字以內`); if (b) this.varGuard(b, 'notify', k); if (v.off || b) nt[k] = { off: !!v.off, body: b }; });
+      x = { regMode: 'here', free, origPrice: free ? Math.max(0, Math.min(200000, parseInt(e.origPrice, 10) || 0)) : 0, extUrl: '', extLabel: '', extStart: '', extEnd: '', extNote: '', linkUrl: lu, linkLabel: lu ? lim(e.linkLabel, 12, '延伸連結的按鈕文字') : '', notify: nt };
+    }
+    [x.extNote, x.extLabel, x.linkLabel].forEach(v => { if (v) this.varGuard(v, 'site'); });
+    const want = ['draft', 'published', 'closed'].includes(e.state) ? e.state : 'draft', e2 = Object.assign({}, e);
+    if (free || ext) { Object.assign(e2, { price: 0, earlyPrice: 0, earlyUntil: '', methods: [] }); if (want === 'published') e2.state = 'draft'; }
+    if (free && want === 'published' && !(d.sessions || []).length) fail('BAD_REQUEST', '發布前請至少新增 1 個場次');
+    const out = save0.call(this, { event: e2, sessions: ext ? [] : d.sessions }, ctx), row = this.evEv(out.event.eventId);
+    Object.assign(row, x, { state: want });
+    return this.a_adminGetEvent({ eventId: row.eventId });
+  };
+  const copy0 = P.a_adminCopyEvent;
+  P.a_adminCopyEvent = function (d, ctx) { const o = copy0.call(this, d, ctx), r = this.evEv(o.eventId); if (r) r.clicks = 0; return o; };
+})();
 
 /* ---- admin-ui.js ---- */
 /* ===================== ADMIN UI helpers (Builder K) =====================
@@ -4021,7 +4171,7 @@ const Admin = {
     if (ok) { toast('已傳送', 'ok'); this.bust(); }
   },
   tplName(k) { if (/^CU_/.test(k || '')) return (this._cuNames || {})[k] || '自訂通知'; return (typeof SEED_TEMPLATES !== 'undefined' && SEED_TEMPLATES.find(t => t[0] === k) || [k, k || '管理員通知'])[1]; },
-  reason(r) { return { template_disabled: '範本已關閉', not_friend: '客人未加入好友', no_zoom_link: '尚未填寫 Zoom', not_sent: '只儲存' }[r] || r || ''; },
+  reason(r) { return { template_disabled: '範本已關閉', event_disabled: '這個活動關閉了這則', not_friend: '客人未加入好友', no_zoom_link: '尚未填寫 Zoom', not_sent: '只儲存' }[r] || r || ''; },
 
   /* =====================================================================
      陪伴追蹤
@@ -4138,7 +4288,7 @@ const Admin = {
     const pv = await api.call('adminPreviewTemplate', { templateKey: t.templateKey, override: draft });
     const groups = {}; templates.forEach(x => (groups[x.group] = groups[x.group] || []).push(x));
     const icon = k => ({ BOOKING_CREATED: ['doc', 'c1'], DEPOSIT_CONFIRMED: ['coin', 'c2'], BALANCE_CONFIRMED: ['coin', 'c4'], PRE_REMINDER: ['video', 'c3'], DAY_REMINDER: ['bell', 'c1'], COMPANION_START: ['heart', 'c4'], COMPANION_END: ['sprout', 'c4'], RESCHEDULED: ['cal', 'c2'], NO_SHOW: ['user-x', 'c5'], RP_READY: ['doc', 'c3'], RP_REMIND: ['bell', 'c2'], RP_ACKED: ['check', 'c4'], TR_CODE_POST: ['key', 'c4'], TR_CODE_PAID: ['key', 'c2'], TR_READING_DONE: ['moon', 'c3'] }[k] || ['chat', 'c1']);
-    const trig = x => ({ event: { BOOKING_CREATED: '客人送出預約時', DEPOSIT_CONFIRMED: '確認訂金收款時', BALANCE_CONFIRMED: '確認尾款收款時', COMPANION_START: '標記服務完成時', RESCHEDULED: '改期成立時', NO_SHOW: '標記未出席時', EV_PAID: '課程付款完成時', EV_ATM: 'ATM 取號後', EV_TRANSFER: '選擇 iPASS MONEY／銀行轉帳時', EV_RECHECK: '你在「收款」退回轉帳時', EV_WAITLIST: '加入候補時', EV_OFFER: '候補遞補時', EV_CHANGED: '場次異動或取消時', RP_READY: '發送總結報告時', RP_REMIND: '報告發送 3 天後仍未確認', RP_ACKED: '客人在 LINE 按「我已收到」', TR_CODE_PAID: '購買全能量解讀付款完成時', TR_CODE_WAIT: '用轉帳購買全能量解讀時', TR_PAY_RECHECK: '你在「收款」退回轉帳時', TR_CODE_EVENT: '重發活動彩蛋代碼時', TR_CODE_GIFT: '送回訪禮物代碼時', TR_READING_DONE: '發送全能量檢測解讀時' }[x.templateKey] || '事件發生時', after_service: `服務完成後第 ${x.offsetDays} 天 ${x.sendTime}`, before_service: `服務前 ${x.offsetDays} 天 ${x.sendTime}`, same_day: `服務開始前 ${x.offsetHours} 小時`, companion_end: `陪伴期最後一天 ${x.sendTime}`, before_event: `開課前 ${x.offsetDays} 天 ${x.sendTime}`, event_day: `開課前 ${x.offsetHours} 小時`, cu_before: `服務前 ${x.offsetDays} 天 ${x.sendTime}`, cu_after: `服務後第 ${x.offsetDays} 天 ${x.sendTime}`, manual: '手動送（在預約明細按「傳送訊息」）' }[x.timing]);
+    const trig = x => ({ event: { BOOKING_CREATED: '客人送出預約時', DEPOSIT_CONFIRMED: '確認訂金收款時', BALANCE_CONFIRMED: '確認尾款收款時', COMPANION_START: '標記服務完成時', RESCHEDULED: '改期成立時', NO_SHOW: '標記未出席時', EV_PAID: '課程付款完成時', EV_FREE: '免費活動送出報名時', EV_FREE_OFFER: '免費活動候補有名額時', EV_ATM: 'ATM 取號後', EV_TRANSFER: '選擇 iPASS MONEY／銀行轉帳時', EV_RECHECK: '你在「收款」退回轉帳時', EV_WAITLIST: '加入候補時', EV_OFFER: '候補遞補時', EV_CHANGED: '場次異動或取消時', RP_READY: '發送總結報告時', RP_REMIND: '報告發送 3 天後仍未確認', RP_ACKED: '客人在 LINE 按「我已收到」', TR_CODE_PAID: '購買全能量解讀付款完成時', TR_CODE_WAIT: '用轉帳購買全能量解讀時', TR_PAY_RECHECK: '你在「收款」退回轉帳時', TR_CODE_EVENT: '重發活動彩蛋代碼時', TR_CODE_GIFT: '送回訪禮物代碼時', TR_READING_DONE: '發送全能量檢測解讀時' }[x.templateKey] || '事件發生時', after_service: `服務完成後第 ${x.offsetDays} 天 ${x.sendTime}`, before_service: `服務前 ${x.offsetDays} 天 ${x.sendTime}`, same_day: `服務開始前 ${x.offsetHours} 小時`, companion_end: `陪伴期最後一天 ${x.sendTime}`, before_event: `開課前 ${x.offsetDays} 天 ${x.sendTime}`, event_day: `開課前 ${x.offsetHours} 小時`, cu_before: `服務前 ${x.offsetDays} 天 ${x.sendTime}`, cu_after: `服務後第 ${x.offsetDays} 天 ${x.sendTime}`, manual: '手動送（在預約明細按「傳送訊息」）' }[x.timing]);
     const isCu = k => /^CU_/.test(k || ''); this._cuNames = {}; templates.forEach(x => { if (isCu(x.templateKey)) this._cuNames[x.templateKey] = x.name; });
     const offs = templates.filter(x => !isCu(x.templateKey) && !x.enabled), vis = templates.filter(x => isCu(x.templateKey) || x.enabled);
     const vgroups = {}; templates.forEach(x => { if (!vgroups[x.group]) vgroups[x.group] = []; }); vis.forEach(x => vgroups[x.group].push(x));
@@ -5041,7 +5191,7 @@ Object.assign(Admin, {
 Object.assign(Admin, {
   _evF: { st: '', mode: '', q: '' }, _evW: null,
   evChip(st) { const [l, c] = EV_STATUS[st] || [st, 'gray']; return `<span class="chip sm ${c}">${l}</span>`; },
-  evRegChip(r) { const [l, c] = EV_REG_LABEL[r.status] || [r.status, 'gray']; return `<span class="chip sm ${c}">${l}</span>`; },
+  evRegChip(r) { const [l, c] = r.status === 'PAID' && r.method === 'free' ? ['已報名', 'ok'] : EV_REG_LABEL[r.status] || [r.status, 'gray']; return `<span class="chip sm ${c}">${l}</span>`; },
   evMode(s) { return `<span class="ev-tg ${s.mode === 'onsite' ? 'on' : 'ol'}">${U.esc(s.modeLabel || evModeLabel(s))}</span>`; },
   async events(root, rest) {
     rest = rest || [];
@@ -5049,14 +5199,17 @@ Object.assign(Admin, {
     if (rest[0] === 'e') return this.evEdit(root, rest[1] || 'new');
     this._evW = null;
     const x = await api.call('adminGetEvents'), F = this._evF, K = x.kpi;
-    const items = x.items.filter(e => (!F.st || (F.st === 'open' ? ['open', 'waitlist'].includes(e.status) : F.st === 'full' ? ['full', 'waitlist'].includes(e.status) : e.status === F.st)) && (!F.mode || e.modes.includes(F.mode)) && (!F.q || e.title.toLowerCase().includes(F.q.toLowerCase())));
-    const cnt = k => x.items.filter(e => k === 'open' ? ['open', 'waitlist'].includes(e.status) : k === 'full' ? ['full', 'waitlist'].includes(e.status) : e.status === k).length;
-    const row = e => { const s = e.next, tot = e.sessions.filter(z => !z.cancelled).reduce((a, z) => [a[0] + z.taken, a[1] + z.capacity], [0, 0]), wait = e.sessions.reduce((a, z) => a + (z.waiting || 0), 0);
+    const items = x.items.filter(e => (!F.st || (F.st === 'open' ? ['open', 'waitlist', 'ext'].includes(e.status) : F.st === 'full' ? ['full', 'waitlist'].includes(e.status) : e.status === F.st)) && (!F.mode || e.modes.includes(F.mode)) && (!F.q || e.title.toLowerCase().includes(F.q.toLowerCase())));
+    const cnt = k => x.items.filter(e => k === 'open' ? ['open', 'waitlist', 'ext'].includes(e.status) : k === 'full' ? ['full', 'waitlist'].includes(e.status) : e.status === k).length;
+    const extRow = e => `<tr><td><div class="qt-n">${AUI.pl((e.cover || {}).style || 'custom1', 'pl')}<span><a href="#/admin/events/e/${e.eventId}"><b>${U.esc(e.title)}</b></a><small class="num">#/events/${U.esc(e.slug)}</small></span></div></td>
+        <td><span class="ev-tg ex">外部平台</span></td><td class="num">${U.esc(evExtWhen(e)) || '—'}</td><td class="num">點擊 ${e.clicks || 0} 次</td><td class="num">—</td><td>${this.evChip(e.status)}</td>
+        <td class="acts">${!['ended', 'draft'].includes(e.status) && e.state !== 'draft' ? `<button class="btn ghost sm" data-ev2n="${e.eventId}">發成最新消息</button>` : ''}<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}">編輯</a></td></tr>`;
+    const row = e => { if (e.regMode === 'ext') return extRow(e); const s = e.next, tot = e.sessions.filter(z => !z.cancelled).reduce((a, z) => [a[0] + z.taken, a[1] + z.capacity], [0, 0]), wait = e.sessions.reduce((a, z) => a + (z.waiting || 0), 0);
       return `<tr><td><div class="qt-n">${AUI.pl((e.cover || {}).style || 'custom1', 'pl')}<span><a href="#/admin/events/e/${e.eventId}"><b>${U.esc(e.title)}</b></a><small class="num">#/events/${U.esc(e.slug)}</small></span></div></td>
         <td>${s ? this.evMode(s) + (s.lessons.length > 1 ? `<small>${s.lessons.length} 堂</small>` : '') : '—'}</td>
         <td class="num">${s ? `${U.dot(s.lessons[0].date).slice(5)}（${WD[U.dow(s.lessons[0].date)]}）${s.lessons[0].start}${e.sessions.length > 1 ? `<small>共 ${e.sessions.length} 場</small>` : ''}` : '<span class="muted">尚未建立場次</span>'}</td>
         <td class="num">${e.status === 'soon' ? `<small>${U.dot(e.regOpen).slice(5)} 開放報名</small>` : tot[1] ? `${tot[0]} / ${tot[1]}${wait ? `<small class="warn-t">候補 ${wait}</small>` : ''}` : '—'}</td>
-        <td class="num">${e.collected ? U.money(e.collected) : '—'}</td><td>${this.evChip(e.status)}</td>
+        <td class="num">${e.free ? '免費' : e.collected ? U.money(e.collected) : '—'}${e.linkUrl && e.clicks ? `<small>連結點擊 ${e.clicks}</small>` : ''}</td><td>${this.evChip(e.status)}</td>
         <td class="acts">${e.sessions.length ? `<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}/roster">名單</a>` : ''}${!['ended', 'draft'].includes(e.status) && e.state !== 'draft' ? `<button class="btn ghost sm" data-ev2n="${e.eventId}">發成最新消息</button>` : ''}<a class="btn ghost sm" href="#/admin/events/e/${e.eventId}">編輯</a></td></tr>`; };
     const tab = (k, l) => `<button type="button" data-evst="${k}" class="${F.st === k ? 'on' : ''}">${l}<b>${k ? cnt(k) : x.items.length}</b></button>`;
     const html = this.shell({ title: '課程', mirror: '首頁課程區塊・課程活動頁・我的預約', pri: `<a class="btn pri sm" href="#/admin/events/e/new">${ic('plus')}<span>新增活動</span></a>` }, `
@@ -5085,11 +5238,61 @@ Object.assign(Admin, {
       if (id !== 'new') { try { ev = (await api.call('adminGetEvent', { eventId: id })).event; } catch (e) { toast('找不到這個活動', 'err'); return App.go('#/admin/events'); } }
       const T = U.today();
       this._evW = ev ? Object.assign(U.clone(ev), { _for: id, sessions: ev.sessions.map(s => Object.assign({}, s)) })
-        : { _for: id, eventId: '', slug: '', title: '', summary: '', intro: '', audience: [], outline: [], cover: { type: 'planet', style: 'custom1', url: '' }, price: 1200, earlyPrice: 0, earlyUntil: '', methods: ['ipass', 'bank'], regOpen: '', regCloseDays: 1, refundDays: 7, state: 'draft', status: 'draft',
+        : { _for: id, eventId: '', slug: '', title: '', summary: '', intro: '', audience: [], outline: [], cover: { type: 'planet', style: 'custom1', url: '' }, regMode: 'here', free: false, origPrice: 0, extUrl: '', extLabel: '', extStart: '', extEnd: '', extNote: '', linkLabel: '', linkUrl: '', notify: {}, clicks: 0, price: 1200, earlyPrice: 0, earlyUntil: '', methods: ['ipass', 'bank'], regOpen: '', regCloseDays: 1, refundDays: 7, state: 'draft', status: 'draft',
           notes: '報名需全額付清，付款完成才保留名額。\n每個 LINE 帳號限報名本人 1 位。\n開課 7 天前可在「我的預約」取消並全額退費；之後不退費，可聯繫 Mia 轉換其他場次一次。',
           sessions: [{ sessionId: '', mode: 'online', lessons: [{ date: U.addDays(T, 14), start: '14:00', end: '16:00' }], capacity: 20, waitlist: true, zoomLink: '', venue: '', city: '', address: '', mapUrl: '', checkin: '', taken: 0 }] };
     }
+    if (!this._evW.notify || typeof this._evW.notify !== 'object') this._evW.notify = {};
+    if (!this._evW.regMode) this._evW.regMode = 'here';
+    if (!this._tplAll) { try { this._tplAll = (await api.call('adminGetTemplates')).templates || []; } catch (e) { this._tplAll = null; } }
     this._evRoot = root; this.evRender();
+  },
+  /* ---------- v5.5：這個活動的 LINE 通知 ---------- */
+  evNtfKeys(W) {
+    const modes = new Set((W.sessions || []).filter(s => s.state !== 'cancelled').map(s => s.mode));
+    const rem = ['EV_REMIND_ONLINE', 'EV_REMIND_ONSITE'].filter(k => !modes.size || modes.has(k === 'EV_REMIND_ONSITE' ? 'onsite' : 'online'));
+    if (W.free) return ['EV_FREE', 'EV_WAITLIST', 'EV_FREE_OFFER', ...rem, 'EV_DAY', 'EV_CHANGED'];
+    const m = W.methods || [];
+    return ['EV_PAID', ...(m.some(x => MANUAL_METHODS.includes(x)) ? ['EV_TRANSFER', 'EV_RECHECK'] : []), ...(m.includes('atm') ? ['EV_ATM'] : []), 'EV_WAITLIST', 'EV_OFFER', ...rem, 'EV_DAY', 'EV_CHANGED'];
+  },
+  evNtfWhen(k, t) {
+    if (t && t.timing === 'before_event') return `開課前 ${+t.offsetDays || 1} 天 ${t.sendTime || '20:00'}`;
+    if (t && t.timing === 'event_day') return `開課前 ${+t.offsetHours || 2} 小時`;
+    return { EV_FREE: '送出報名時', EV_FREE_OFFER: '候補有名額時', EV_PAID: '付款完成時', EV_ATM: 'ATM 取號後', EV_TRANSFER: '選擇轉帳付款時', EV_RECHECK: '退回轉帳時', EV_WAITLIST: '加入候補時', EV_OFFER: '候補遞補時', EV_CHANGED: '場次異動或取消時' }[k] || '';
+  },
+  evNtfCard(W) {
+    const T = this._tplAll || [], N = W.notify || {};
+    const rows = this.evNtfKeys(W).map(k => {
+      const t = T.find(x => x.templateKey === k), ov = N[k] || {}, gOff = !!t && (t.enabled === false || t.enabled === 'FALSE');
+      const sub = gOff ? '通知設定裡已關閉・所有活動都不送' : ov.off ? '這個活動不送' : ov.body ? '這個活動另寫的內容' : '用共用內容';
+      return `<div class="ntf-r${ov.body && !ov.off && !gOff ? ' cus' : ''}${gOff || ov.off ? ' off' : ''}"><span class="t"><b>${TPL_NAME[k] || k}${ov.body ? '<span class="ntf-tg">這個活動另寫</span>' : ''}</b><small>${this.evNtfWhen(k, t)}・${sub}</small></span>
+        <button type="button" class="tlink sm" data-ntfed="${k}" ${gOff ? 'disabled' : ''}>${ov.body ? '修改' : '另寫'}</button>${AUI.sw(!gOff && !ov.off, `data-ntfsw="${k}" ${gOff ? 'disabled' : ''}`, TPL_NAME[k] || k)}</div>`;
+    }).join('');
+    return `<section class="card"><header class="ch"><h3>LINE 通知</h3>${W.free ? '<span class="chip sm ok">免費活動</span>' : ''}<span class="sub">只影響這個活動</span></header><div class="cb ev-ntf2">${rows}
+      <p class="mnote">${W.free ? '免費活動用不到的付款通知（付款完成、ATM、轉帳待付款、退回轉帳、候補遞補）不顯示。' : '只列出這個活動會用到的通知（依付款方式與場次形式）。'}「另寫」只改這個活動的內容；整則關掉請到通知訊息。</p>
+      <a class="tlink sm" href="#/admin/settings/templates">所有活動共用的內容：設定 › 通知訊息${ic('right')}</a></div></section>`;
+  },
+  async evNtfEdit(k) {
+    this.evSync();
+    const W = this._evW, t = (this._tplAll || []).find(x => x.templateKey === k) || {}, ov = W.notify[k] || {};
+    const v = await modal({ title: TPL_NAME[k] || k, ok: '套用', html: `<p class="mnote">只用在「${U.esc(W.title || '這個活動')}」，其他活動不受影響。</p>${AUI.field({ label: '訊息內容', key: 'body', max: 500, type: 'textarea', rows: 8, value: ov.body || t.body || '' })}
+      <p class="mnote">一開始會先帶入共用的內容，直接改就好；可插入 {姓名}、{活動名稱}、{場次日期}、{上課時間}、{上課形式}、{地點}、{報名編號}、{我的報名}⋯</p>
+      <div class="ntf-ab"><button type="button" class="btn ghost sm" data-ntfreset ${ov.body ? '' : 'disabled'}>恢復成共用內容</button><button type="button" class="btn ghost sm" data-ntftest>${ic('send')}傳給我看看</button></div>`,
+      onOpen: (sc, close) => {
+        AUI.bindCounters(sc);
+        sc.querySelector('[data-ntfreset]').addEventListener('click', () => close({ reset: true }));
+        sc.querySelector('[data-ntftest]').addEventListener('click', async e => {
+          if (!W.eventId) { toast('請先儲存活動，再傳給自己看', 'err'); return; }
+          const b = e.currentTarget; b.disabled = true;
+          try { await api.call('adminEvTestNotify', { eventId: W.eventId, key: k, body: sc.querySelector('[data-k="body"]').value.trim() }); toast('已傳到你的 LINE', 'ok'); } catch (er) { errToast(er); } finally { b.disabled = false; }
+        });
+      },
+      onOk: sc => ({ body: sc.querySelector('[data-k="body"]').value.trim() }) });
+    if (!v) return;
+    const cur = Object.assign({}, W.notify[k]);
+    if (v.reset || !v.body || v.body === String(t.body || '').trim()) delete cur.body; else cur.body = v.body;
+    if (cur.body || cur.off) W.notify[k] = cur; else delete W.notify[k];
+    toast('已套用，記得按右上「儲存」', 'ok'); this.evRender();
   },
   evSync() {
     const W = this._evW, r = this._evRoot; if (!W || !r) return;
@@ -5117,12 +5320,19 @@ Object.assign(Admin, {
           <label class="fld"><span class="lbl">地址<span class="req">*</span></span><input class="inp" data-sw="address" maxlength="80" value="${U.esc(s.address || '')}"></label>
           <div class="row2"><label class="fld"><span class="lbl">Google 地圖連結</span><input class="inp" data-sw="mapUrl" value="${U.esc(s.mapUrl || '')}" placeholder="https://maps.app.goo.gl/…"></label><label class="fld"><span class="lbl">報到與交通說明</span><input class="inp" data-sw="checkin" maxlength="120" value="${U.esc(s.checkin || '')}" placeholder="開課前 15 分鐘報到"></label></div>`}
     </div>`;
-    const cv = W.cover || {}, st = isNew ? 'draft' : W.status;
+    const cv = W.cover || {}, st = isNew ? 'draft' : W.status, ext = W.regMode === 'ext', hasReg = (W.sessions || []).some(s => (s.taken || 0) > 0 || (s.waiting || 0) > 0);
     const html = this.shell({ title: '課程', mirror: '課程活動頁・活動詳情・報名', sub: `<a class="lnk" href="#/admin/events">${ic('left')}課程</a>`,
-      actions: `${this.evChip(st)}${!isNew && W.state !== 'draft' ? `<a class="btn ghost sm" href="#/events/${U.esc(W.slug)}" target="_blank" rel="noopener">前台預覽</a>` : ''}${isNew ? '' : `${W.state !== 'draft' ? '<button class="btn ghost sm" data-ev2n>發成最新消息</button>' : ''}<button class="btn ghost sm" data-evcopy>複製活動</button>`}${!isNew && W.sessions.some(s => s.taken) ? `<a class="btn ghost sm" href="#/admin/events/e/${W.eventId}/roster">報名名單</a>` : ''}`,
+      actions: `${this.evChip(st)}${!isNew && W.state !== 'draft' ? `<a class="btn ghost sm" href="#/events/${U.esc(W.slug)}" target="_blank" rel="noopener">前台預覽</a>` : ''}${isNew ? '' : `${W.state !== 'draft' ? '<button class="btn ghost sm" data-ev2n>發成最新消息</button>' : ''}<button class="btn ghost sm" data-evcopy>複製活動</button>`}${!isNew && !ext && W.sessions.some(s => s.taken) ? `<a class="btn ghost sm" href="#/admin/events/e/${W.eventId}/roster">報名名單</a>` : ''}`,
       pri: `<button class="btn pri sm" data-evsave>${ic('check')}<span>儲存</span></button>` }, `
       <div class="g2 qz ev-ed">
         <div class="stack">
+          <section class="card"><header class="ch"><h3>報名方式</h3></header><div class="cb">
+            ${seg('ermode', ext ? 'ext' : 'here', [['here', '在 Mia 預約報名'], ['ext', '連到外部平台']])}
+            ${ext ? `<p class="mnote">報名與詳細內容在外部平台：這裡只放介紹與網址，場次、費用、LINE 通知都不用設定；前台按鈕會在新分頁打開網址。</p>
+              <label class="fld"><span class="lbl"><span>活動網址<span class="req">*</span></span><small>https 開頭</small></span><span class="ev-urlrow"><input class="inp num" data-ew="extUrl" value="${U.esc(W.extUrl || '')}" placeholder="https://…"><button type="button" class="btn ghost sm" data-extopen>試開</button></span></label>
+              <div class="row2"><label class="fld"><span class="lbl"><span>按鈕文字</span><small>預設「前往活動網站」</small></span><input class="inp" data-ew="extLabel" maxlength="12" value="${U.esc(W.extLabel || '')}" placeholder="前往活動網站"></label><label class="fld"><span class="lbl"><span>時間與地點說明</span><small>選填・顯示在卡片上</small></span><input class="inp" data-ew="extNote" maxlength="40" value="${U.esc(W.extNote || '')}" placeholder="例如：線上・兩個月的陪伴企劃"></label></div>
+              <div class="row2"><label class="fld"><span class="lbl">活動開始</span><input class="inp num" type="date" data-ew="extStart" value="${U.esc(W.extStart || '')}"></label><label class="fld"><span class="lbl"><span>活動結束<span class="req">*</span></span><small>過了這天前台自動收起</small></span><input class="inp num" type="date" data-ew="extEnd" value="${U.esc(W.extEnd || '')}"></label></div>` : ''}
+          </div></section>
           <section class="card"><header class="ch"><h3>基本資料</h3></header><div class="cb fgrid">
             <label class="fld half"><span class="lbl"><span>活動名稱<span class="req">*</span></span></span><input class="inp" data-ew="title" maxlength="30" value="${U.esc(W.title)}"></label>
             <label class="fld half"><span class="lbl"><span>網址代號<span class="req">*</span></span><small>英文小寫、數字、-</small></span><span class="pre"><i class="num">#/events/</i><input class="inp num" data-ew="slug" maxlength="40" value="${U.esc(W.slug)}" placeholder="meditation-101"></span></label>
@@ -5130,29 +5340,37 @@ Object.assign(Admin, {
             ${AUI.field({ label: '課程介紹', max: 800, value: W.intro, type: 'textarea', rows: 4, attr: 'data-ew="intro"' })}
             <div class="fld half"><span class="lbl"><span>適合對象</span><small>清單・可拖曳排序</small></span>${AUI.list('audience', [{ k: 'v', ph: '例如：想開始規律冥想的人', max: 40 }], (W.audience || []).map(v => ({ v })), { max: 8 })}</div>
             <div class="fld half"><span class="lbl"><span>課程內容</span><small>清單・可拖曳排序</small></span>${AUI.list('outline', [{ k: 'v', ph: '例如：呼吸與身體掃描', max: 40 }], (W.outline || []).map(v => ({ v })), { max: 12 })}</div>
+            ${ext ? '' : `<div class="fld"><span class="lbl"><span>延伸連結</span><small>選填・例如活動專屬網站，放在介紹下方、場次上方</small></span><div class="row2"><input class="inp" data-ew="linkLabel" maxlength="12" value="${U.esc(W.linkLabel || '')}" placeholder="按鈕文字，例如：看企劃網站" aria-label="延伸連結的按鈕文字"><input class="inp num" data-ew="linkUrl" value="${U.esc(W.linkUrl || '')}" placeholder="https://…" aria-label="延伸連結的網址"></div></div>`}
           </div></section>
           <section class="card"><header class="ch"><h3>封面圖</h3></header><div class="cb">
             ${seg('ecov', cv.type === 'image' ? 'image' : 'planet', [['planet', '預設星球圖'], ['image', '自己的圖片']])}
             ${cv.type === 'image' ? `<label class="fld"><span class="lbl"><span>圖片網址</span><small>建議 1600×900・https 開頭</small></span><input class="inp" data-ecurl value="${U.esc(cv.url || '')}" placeholder="https://…"></label>${cv.url ? `<img class="ev-cvpv" src="${U.esc(cv.url)}" alt="封面預覽">` : ''}<p class="mnote">之後會和「總結報告」一起加入直接上傳圖片（存到你的 Google 雲端資料夾）；目前先貼上圖片網址。</p>`
               : `<div class="stpick sm" data-ecsty>${PLAN_STYLES.map(s => `<button type="button" data-sty="${s}" class="${s === cv.style ? 'on' : ''}" aria-pressed="${s === cv.style}" aria-label="配色 ${s}">${AUI.pl(s, 'pl')}</button>`).join('')}</div>`}
           </div></section>
-          <section class="card"><header class="ch"><h3>場次</h3><span class="sub">一個活動可以有多個場次，線上、現場可混合</span><span class="sp"></span><button class="btn soft sm" data-sadd>${ic('plus')}新增場次</button></header>
-            <div class="cb ev-sl">${W.sessions.map(sesBox).join('') || AUI.empty('還沒有場次', '按「新增場次」')}<p class="mnote">場次時間會自動從「諮詢可預約時段」扣除。</p></div></section>
+          ${ext ? '' : `<section class="card"><header class="ch"><h3>場次</h3><span class="sub">一個活動可以有多個場次，線上、現場可混合</span><span class="sp"></span><button class="btn soft sm" data-sadd>${ic('plus')}新增場次</button></header>
+            <div class="cb ev-sl">${W.sessions.map(sesBox).join('') || AUI.empty('還沒有場次', '按「新增場次」')}<p class="mnote">場次時間會自動從「諮詢可預約時段」扣除。</p></div></section>`}
         </div>
         <div class="stack">
-          <section class="card"><header class="ch"><h3>費用與付款</h3></header><div class="cb">
+          ${ext ? `<section class="card"><header class="ch"><h3>發布</h3></header><div class="cb">
+            <div class="setrow"><span class="t"><b>發布狀態</b><small>草稿不會出現在前台；關閉後前台不顯示</small></span>${seg('estate', W.state, [['draft', '草稿'], ['published', '發布'], ['closed', '關閉']])}</div>
+            ${W.eventId ? `<div class="setrow"><span class="t"><b>「${U.esc(W.extLabel || '前往活動網站')}」被點了</b><small>從介紹頁點到外部平台的次數</small></span><b class="num">${W.clicks || 0} 次</b></div>` : ''}
+            <p class="mnote">場次、費用與付款、報名設定、LINE 通知：外部平台的活動不需要，已收起來。活動結束日過後，前台自動收起。</p>
+          </div></section>` : `<section class="card"><header class="ch"><h3>費用與付款</h3></header><div class="cb">
+            ${seg('efree', W.free ? 'free' : 'paid', [['paid', '收費'], ['free', '免費']])}
+            ${W.free ? `<p class="note ok ev-freenote">${ic('check')}<span>這個活動不收費：客人送出報名就成立，不會出現付款頁，也不會進「收款」。</span></p>
+            <label class="fld"><span class="lbl"><span>顯示原價</span><small>選填・前台寫「原價 NT$1,200・本場免費」</small></span><input class="inp num" data-ew="origPrice" inputmode="numeric" value="${U.esc(W.origPrice || '')}" placeholder="例如 1200"></label>` : `
             <div class="row3"><label class="fld"><span class="lbl">原價</span><input class="inp num" data-ew="price" inputmode="numeric" value="${U.esc(W.price)}"></label><label class="fld"><span class="lbl"><span>早鳥價</span><small>選填</small></span><input class="inp num" data-ew="earlyPrice" inputmode="numeric" value="${U.esc(W.earlyPrice || '')}"></label><label class="fld"><span class="lbl">早鳥截止</span><input class="inp num" type="date" data-ew="earlyUntil" value="${U.esc(W.earlyUntil || '')}"></label></div>
             <div class="fld"><span class="lbl"><span>付款方式</span><small>全額付清</small></span>${['ipass', 'bank', 'card', 'atm'].map(m => `<div class="setrow"><span class="t"><b>${MANUAL_METHODS.includes(m) ? EV_METHODS[m].label + (m === 'bank' ? '（你的帳戶）' : '') : '綠界・' + EV_METHODS[m].label}</b><small>${MANUAL_METHODS.includes(m) ? '名額保留 24 小時・客人回填末五碼，你在「收款」確認' : m === 'atm' ? '目前暫停・綠界虛擬帳號；要在「設定 › 串接」打開才看得到' : '目前暫停・要在「設定 › 串接」打開綠界信用卡才看得到'}</small></span>${AUI.sw((W.methods || []).includes(m), `data-em="${m}"`, EV_METHODS[m].label)}</div>`).join('')}</div>
+          `}
+            ${hasReg ? '<p class="mnote">已經有人報名，不能在收費、免費之間切換；要改請先「複製活動」。</p>' : ''}
           </div></section>
           <section class="card"><header class="ch"><h3>報名設定</h3></header><div class="cb">
             <div class="setrow"><span class="t"><b>發布狀態</b><small>草稿不會出現在前台；關閉後前台不顯示也不能報名</small></span>${seg('estate', W.state, [['draft', '草稿'], ['published', '發布'], ['closed', '關閉']])}</div>
-            <div class="row3 ev-regrow"><label class="fld"><span class="lbl"><span>開放報名</span><small>空白＝立即</small></span><input class="inp num" type="date" data-ew="regOpen" value="${U.esc(W.regOpen || '')}"></label><label class="fld"><span class="lbl"><span>報名截止</span><small>開課前幾天</small></span><input class="inp num" data-ew="regCloseDays" inputmode="numeric" value="${U.esc(W.regCloseDays)}"></label><label class="fld"><span class="lbl"><span>可取消退費</span><small>開課前幾天</small></span><input class="inp num" data-ew="refundDays" inputmode="numeric" value="${U.esc(W.refundDays)}"></label></div>
+            <div class="row3 ev-regrow"><label class="fld"><span class="lbl"><span>開放報名</span><small>空白＝立即</small></span><input class="inp num" type="date" data-ew="regOpen" value="${U.esc(W.regOpen || '')}"></label><label class="fld"><span class="lbl"><span>報名截止</span><small>開課前幾天</small></span><input class="inp num" data-ew="regCloseDays" inputmode="numeric" value="${U.esc(W.regCloseDays)}"></label><label class="fld"><span class="lbl"><span>${W.free ? '可取消' : '可取消退費'}</span><small>開課前幾天</small></span><input class="inp num" data-ew="refundDays" inputmode="numeric" value="${U.esc(W.refundDays)}"></label></div>
             <div class="setrow"><span class="t"><b>每人限報名</b><small>本人 1 位（固定）</small></span></div>
             ${AUI.field({ label: '報名須知與退費規則', max: 800, value: W.notes, type: 'textarea', rows: 5, attr: 'data-ew="notes"' })}
           </div></section>
-          <section class="card"><header class="ch"><h3>LINE 通知</h3></header><div class="cb ev-ntf">
-            ${[['EV_PAID', '付款完成時'], ['EV_ATM', 'ATM 取號後'], ['EV_TRANSFER', '選擇轉帳付款時'], ['EV_RECHECK', '退回轉帳時'], ['EV_WAITLIST', '加入候補時'], ['EV_OFFER', '候補遞補時'], ['EV_REMIND_ONLINE', '開課前 1 天 20:00'], ['EV_REMIND_ONSITE', '開課前 1 天 20:00'], ['EV_DAY', '開課前 2 小時'], ['EV_CHANGED', '場次異動或取消時']].map(([k, t]) => `<p><b>${TPL_NAME[k]}</b><small>${t}</small></p>`).join('')}
-            <a class="btn ghost sm" href="#/admin/settings/templates">編輯通知內容${ic('right')}</a></div></section>
+          ${this.evNtfCard(W)}`}
         </div>
       </div>`);
     this.mount(root, html, r => {
@@ -5163,6 +5381,11 @@ Object.assign(Admin, {
       r.querySelectorAll('[data-ecov]').forEach(b => b.addEventListener('click', () => { this.evSync(); W.cover.type = b.dataset.ecov; this.evRender(); }));
       r.querySelectorAll('[data-ecsty] [data-sty]').forEach(b => b.addEventListener('click', () => { W.cover.style = b.dataset.sty; r.querySelectorAll('[data-ecsty] [data-sty]').forEach(y => { y.classList.toggle('on', y === b); y.setAttribute('aria-pressed', y === b); }); }));
       r.querySelectorAll('[data-estate]').forEach(b => b.addEventListener('click', () => { this.evSync(); W.state = b.dataset.estate; this.evRender(); }));
+      r.querySelectorAll('[data-ermode]').forEach(b => b.addEventListener('click', () => { if (b.dataset.ermode === W.regMode) return; if (hasReg) { toast('已經有人報名，不能改成外部平台；要改請先「複製活動」', 'err'); return; } this.evSync(); W.regMode = b.dataset.ermode; this.evRender(); }));
+      r.querySelectorAll('[data-efree]').forEach(b => b.addEventListener('click', () => { const f = b.dataset.efree === 'free'; if (f === !!W.free) return; if (hasReg) { toast('已經有人報名，不能在收費、免費之間切換；要改請先「複製活動」', 'err'); return; } this.evSync(); W.free = f; if (f && W.notes === EV_NOTES_PAID) W.notes = EV_NOTES_FREE; else if (!f && W.notes === EV_NOTES_FREE) W.notes = EV_NOTES_PAID; this.evRender(); }));
+      r.querySelectorAll('[data-ntfsw]').forEach(b => b.addEventListener('click', () => { if (b.disabled) return; this.evSync(); const k = b.dataset.ntfsw, cur = Object.assign({}, W.notify[k]); if (AUI.swOn(b)) delete cur.off; else cur.off = true; if (cur.body || cur.off) W.notify[k] = cur; else delete W.notify[k]; this.evRender(); }));
+      r.querySelectorAll('[data-ntfed]').forEach(b => b.addEventListener('click', () => this.evNtfEdit(b.dataset.ntfed)));
+      r.querySelectorAll('[data-extopen]').forEach(b => b.addEventListener('click', () => { const u = (r.querySelector('[data-ew="extUrl"]') || {}).value || ''; if (!/^https:\/\/\S+$/.test(u.trim())) { toast('活動網址需為 https 開頭', 'err'); return; } window.open(u.trim(), '_blank', 'noopener'); }));
       r.querySelectorAll('[data-smode]').forEach(b => b.addEventListener('click', () => { this.evSync(); W.sessions[+b.closest('[data-si]').dataset.si].mode = b.dataset.smode; this.evRender(); }));
       r.querySelectorAll('[data-sadd]').forEach(b => b.addEventListener('click', () => { this.evSync(); const last = W.sessions[W.sessions.length - 1]; W.sessions.push(last ? Object.assign(U.clone(last), { sessionId: '', taken: 0, waiting: 0, state: 'open', lessons: last.lessons.map(l => Object.assign({}, l, { date: U.addDays(l.date || U.today(), 7) })) }) : { sessionId: '', mode: 'online', lessons: [{ date: U.addDays(U.today(), 14), start: '14:00', end: '16:00' }], capacity: 20, waitlist: true }); this.evRender(); }));
       r.querySelectorAll('[data-sdel]').forEach(b => b.addEventListener('click', () => { this.evSync(); W.sessions.splice(+b.dataset.sdel, 1); this.evRender(); }));
@@ -5177,8 +5400,9 @@ Object.assign(Admin, {
       r.querySelectorAll('[data-evsave]').forEach(b => b.addEventListener('click', async () => {
         this.evSync();
         if (!W.title) { toast('請填寫活動名稱', 'err'); return; } if (!EV_SLUG_RE.test(W.slug)) { toast('網址代號只能用英文小寫、數字與 -，2–40 字', 'err'); return; }
-        const event = {}; ['eventId', 'slug', 'title', 'summary', 'intro', 'audience', 'outline', 'cover', 'price', 'earlyPrice', 'earlyUntil', 'methods', 'regOpen', 'regCloseDays', 'refundDays', 'notes', 'state'].forEach(k => event[k] = W[k]);
-        const sessions = W.sessions.map(s => ({ sessionId: s.sessionId, mode: s.mode, lessons: s.lessons, capacity: s.capacity, waitlist: s.waitlist !== false, zoomLink: s.zoomLink, venue: s.venue, city: s.city, address: s.address, mapUrl: s.mapUrl, checkin: s.checkin }));
+        const event = {}; ['eventId', 'slug', 'title', 'summary', 'intro', 'audience', 'outline', 'cover', 'price', 'earlyPrice', 'earlyUntil', 'methods', 'regOpen', 'regCloseDays', 'refundDays', 'notes', 'state', 'regMode', 'free', 'origPrice', 'extUrl', 'extLabel', 'extStart', 'extEnd', 'extNote', 'linkLabel', 'linkUrl', 'notify'].forEach(k => event[k] = W[k]);
+        if (ext && !W.extUrl && W.state === 'published') { toast('請填寫活動網址', 'err'); return; }
+        const sessions = ext ? [] : W.sessions.map(s => ({ sessionId: s.sessionId, mode: s.mode, lessons: s.lessons, capacity: s.capacity, waitlist: s.waitlist !== false, zoomLink: s.zoomLink, venue: s.venue, city: s.city, address: s.address, mapUrl: s.mapUrl, checkin: s.checkin }));
         b.disabled = true;
         try { const o = await api.call('adminSaveEvent', { event, sessions }); App.site = null; Front._evP = null; toast(isNew ? '已新增活動' : '已儲存活動，前台已同步', 'ok'); this._evW = null; if (isNew) App.go('#/admin/events/e/' + o.event.eventId); else this.evEdit(root, o.event.eventId); }
         catch (er) { errToast(er); b.disabled = false; }
@@ -5195,14 +5419,14 @@ Object.assign(Admin, {
     const mask = p => String(p || '').replace(/^(\d{4})\d{3}(\d{3})$/, '$1•••$2');
     const left = r => { const due = r.status === 'OFFER' ? r.offerUntil : r.holdUntil; if (!due) return ''; const h = Math.max(0, Math.round((Date.parse(due) - Date.now()) / 36e5)); return h >= 1 ? `剩 ${h} 小時` : '即將逾時'; };
     const payTxt = r => r.status === 'PAID' ? `${U.esc(r.methodLabel)}` : (r.status === 'HOLD' || r.status === 'OFFER') ? (r.atm ? `ATM 待入帳・${left(r)}` : `待付款・${left(r)}`) : r.refund === 'MANUAL' ? '<b class="warn-t">待人工退款</b>' : r.refund === 'REFUNDED' ? '已退款' : r.refund === 'MANUAL_DONE' ? '已人工退款' : '—';
-    const row = r => `<tr class="${['CANCELLED'].includes(r.status) ? 'dis' : ''}"><td class="num">${U.esc(r.regId)}</td><td><b>${U.esc(r.name)}</b>${r.note ? `<small>${U.esc(r.note)}</small>` : ''}</td><td class="num">${U.esc(mask(r.phone))}</td><td>${this.evRegChip(r)}<small>${payTxt(r)}</small></td><td class="num">${U.money(r.amount)}${r.early ? '<small>早鳥</small>' : ''}</td><td class="num">${U.dot(r.createdAt.slice(0, 10)).slice(5)} ${r.createdAt.slice(11, 16)}</td>
+    const row = r => `<tr class="${['CANCELLED'].includes(r.status) ? 'dis' : ''}"><td class="num">${U.esc(r.regId)}</td><td><b>${U.esc(r.name)}</b>${r.note ? `<small>${U.esc(r.note)}</small>` : ''}</td><td class="num">${U.esc(mask(r.phone))}</td><td>${this.evRegChip(r)}<small>${payTxt(r)}</small></td><td class="num">${r.method === 'free' ? '免費' : U.money(r.amount)}${r.early ? '<small>早鳥</small>' : ''}</td><td class="num">${U.dot(r.createdAt.slice(0, 10)).slice(5)} ${r.createdAt.slice(11, 16)}</td>
       <td>${r.status === 'PAID' ? AUI.cbx(r.checkedIn, `data-chk="${r.regId}"`, '報到：' + r.name) : '—'}</td>
       <td class="acts">${r.status === 'PAID' && ev.sessions.filter(s => s.sessionId !== cur.sessionId && !s.cancelled && s.state !== 'ended').length ? `<button class="btn ghost sm" data-move="${r.regId}">轉場次</button>` : ''}${['PAID', 'HOLD', 'OFFER'].includes(r.status) ? `<button class="btn ghost sm" data-rcancel="${r.regId}">取消</button>` : ''}${r.refund === 'MANUAL' ? `<button class="btn soft sm" data-refunded="${r.regId}">已退款</button>` : ''}</td></tr>`;
     const html = this.shell({ title: '課程', mirror: '我的預約・課程', sub: `<a class="lnk" href="#/admin/events/e/${ev.eventId}">${ic('left')}${U.esc(ev.title)}</a>`,
       actions: `<button class="btn ghost sm" data-csv>${ic('doc')}匯出 CSV</button>`, pri: `<button class="btn pri sm" data-msg>${ic('send')}<span>LINE 訊息給這個場次</span></button>` }, `
       <h2 class="ev-rh">報名名單・${U.esc(ev.title)}</h2>
       <div class="ev-stabs">${ev.sessions.map((s, i) => `<a class="ev-stab ${s.sessionId === cur.sessionId ? 'on' : ''}" href="#/admin/events/e/${ev.eventId}/roster?s=${s.sessionId}"><b>場次 ${i + 1}・<span class="num">${U.dot(s.lessons[0].date).slice(5)}</span></b><small>${U.esc(s.modeLabel)}・<span class="num">${s.taken}/${s.capacity}</span>${s.cancelled ? '・已取消' : ''}</small></a>`).join('')}</div>
-      <div class="kpis ev-kpis"><div class="kpi card"><small>已付款</small><b class="num">${paid.length}</b><span>人</span></div><div class="kpi card"><small>待付款</small><b class="num">${hold.length}</b><span>人${hold.some(r => r.atm) ? '・ATM 待入帳' : ''}</span></div><div class="kpi card"><small>已報到</small><b class="num">${chk} / ${paid.length}</b><span>上課當天勾選</span></div><div class="kpi card"><small>候補</small><b class="num">${x.waitlist.length}</b><span>人</span></div></div>
+      <div class="kpis ev-kpis"><div class="kpi card"><small>${ev.free ? '已報名' : '已付款'}</small><b class="num">${paid.length}</b><span>人</span></div><div class="kpi card"><small>待付款</small><b class="num">${hold.length}</b><span>人${hold.some(r => r.atm) ? '・ATM 待入帳' : ''}</span></div><div class="kpi card"><small>已報到</small><b class="num">${chk} / ${paid.length}</b><span>上課當天勾選</span></div><div class="kpi card"><small>候補</small><b class="num">${x.waitlist.length}</b><span>人</span></div></div>
       <section class="card flush"><header class="ch"><h3>${U.esc(cur.when)}・${U.esc(cur.modeLabel)}</h3>${cur.mode === 'online' && !cur.zoomLink ? '<span class="chip sm warn">尚未填 Zoom 連結</span>' : ''}</header>
         <div class="tbl-wrap"><table class="tbl ev-rt"><thead><tr><th>報名編號</th><th>姓名</th><th>手機</th><th>付款</th><th>金額</th><th>報名時間</th><th>報到</th><th></th></tr></thead><tbody>${x.regs.map(row).join('') || `<tr><td colspan="8">${AUI.empty('還沒有人報名')}</td></tr>`}</tbody></table></div>
         ${x.expired ? `<p class="mnote" style="padding:0 18px 14px">另有 ${x.expired} 筆逾時未付款，名額已自動釋出。</p>` : ''}</section>
@@ -5213,7 +5437,7 @@ Object.assign(Admin, {
       const reload = () => this.evRoster(root, eventId);
       r.querySelectorAll('[data-chk]').forEach(b => b.addEventListener('click', async () => { const on = !b.classList.contains('on'); try { await api.call('adminCheckIn', { regId: b.dataset.chk, on }); b.classList.toggle('on', on); b.setAttribute('aria-checked', on); toast(on ? '已報到' : '已取消報到', 'ok'); } catch (er) { errToast(er); } }));
       r.querySelectorAll('[data-rcancel]').forEach(b => b.addEventListener('click', async () => { const rg = x.regs.find(y => y.regId === b.dataset.rcancel);
-        const ok = await modal({ title: '取消報名・' + rg.name, ok: '確定取消', html: `<p>取消後名額立即釋出，自動通知候補第 1 位。</p>${rg.status === 'PAID' ? `<div class="setrow"><span class="t"><b>同時退款</b><small>${rg.method === 'atm' ? 'ATM 無法自動退回，會標記為待人工退款' : rg.methodLabel + ' 會直接原路退款'}</small></span>${AUI.sw(true, 'data-rf', '同時退款')}</div>` : ''}<div class="setrow"><span class="t"><b>LINE 通知客人</b></span>${AUI.sw(true, 'data-nt', '通知客人')}</div>${AUI.field({ label: '原因（後台紀錄）', key: 'why', max: 100 })}`,
+        const ok = await modal({ title: '取消報名・' + rg.name, ok: '確定取消', html: `<p>取消後名額立即釋出，自動通知候補第 1 位。</p>${rg.status === 'PAID' && rg.method !== 'free' ? `<div class="setrow"><span class="t"><b>同時退款</b><small>${rg.method === 'atm' ? 'ATM 無法自動退回，會標記為待人工退款' : rg.methodLabel + ' 會直接原路退款'}</small></span>${AUI.sw(true, 'data-rf', '同時退款')}</div>` : ''}<div class="setrow"><span class="t"><b>LINE 通知客人</b></span>${AUI.sw(true, 'data-nt', '通知客人')}</div>${AUI.field({ label: '原因（後台紀錄）', key: 'why', max: 100 })}`,
           onOpen: sc => AUI.bindSwitches(sc), onOk: async sc => { const rf = sc.querySelector('[data-rf]'); await api.call('adminCancelReg', { regId: rg.regId, refund: rf ? AUI.swOn(rf) : false, notify: AUI.swOn(sc.querySelector('[data-nt]')), reason: sc.querySelector('[data-k="why"]').value.trim() }); return true; } });
         if (ok) { toast('已取消報名', 'ok'); reload(); } }));
       r.querySelectorAll('[data-refunded]').forEach(b => b.addEventListener('click', async () => { if (!await confirmBox('標記已退款', '<p>確認已經轉帳退款給客人？</p>', '已退款')) return; try { await api.call('adminMarkRefunded', { regId: b.dataset.refunded }); toast('已標記退款完成', 'ok'); reload(); } catch (er) { errToast(er); } }));
@@ -5778,12 +6002,16 @@ Object.assign(Admin, {
   /* v5.4：從網站帶入（課程活動・方案・測驗）＝把標題、分類、內文、封面、按鈕、下架時間填好（只複製一次；設計稿第 26 排） */
   newsFrom(kind, o) {
     const cats = (this._news || {}).categories || [], cat = c => cats.includes(c) ? c : (cats[0] || c), T = U.today();
+    if (kind === 'ev' && o.regMode === 'ext') {
+      const w = evExtWhen(o);
+      return { title: o.title, category: cat('課程活動'), body: [String(o.summary || o.intro || '').trim(), '', w ? '・活動期間：' + w : '', o.extNote ? '・' + o.extNote : ''].filter((x, i) => x || i === 1).join('\n').trim(), cover: Object.assign({ type: 'planet', style: 'custom1', url: '' }, o.cover || {}), btnLabel: String(o.extLabel || '前往活動網站').slice(0, 16), btnTarget: o.extUrl || '#/events/' + o.slug, unpublishAt: o.extEnd ? o.extEnd + 'T23:59:00+08:00' : '' };
+    }
     if (kind === 'ev') {
       const ss = (o.sessions || []).filter(z => !z.cancelled && !['ended', 'cancelled'].includes(z.state));
       const ln = z => { const ls = z.lessons || [], f = ls[0] || {}, l = ls[ls.length - 1] || {}; const when = z.when || (f.date ? `${U.dot(f.date).slice(5)}（${WD[U.dow(f.date)]}）${f.start || ''}${f.end ? '–' + f.end : ''}${ls.length > 1 ? `・共 ${ls.length} 堂` : ''}` : ''); const ml = z.modeLabel || (z.mode === 'onsite' ? '現場' : '線上'), loc = z.mode === 'onsite' ? [z.city && ml.indexOf(z.city) < 0 ? z.city : '', z.venue || z.address].filter(Boolean).join(' ') : ''; return `・${when}・${ml}${loc ? '・' + loc : ''}`; };
       const early = o.earlyPrice && o.earlyUntil && o.earlyUntil >= T;
       const lastEnd = ss.reduce((m, z) => { const l = (z.lessons || []).slice(-1)[0]; const v = l && l.date ? l.date + 'T' + (l.end || '23:59') + ':00+08:00' : ''; return v > m ? v : m; }, '');
-      const body = [String(o.summary || o.intro || '').trim(), '', ...ss.map(ln), `費用：${U.money(o.price)}${early ? `（早鳥至 ${U.dot(o.earlyUntil).slice(5)}：${U.money(o.earlyPrice)}）` : ''}`, '名額有限，報名付款完成即保留名額。'].join('\n').replace(/^\n+/, '');
+      const body = [String(o.summary || o.intro || '').trim(), '', ...ss.map(ln), o.free ? `費用：免費${o.origPrice ? `（原價 ${U.money(o.origPrice)}）` : ''}` : `費用：${U.money(o.price)}${early ? `（早鳥至 ${U.dot(o.earlyUntil).slice(5)}：${U.money(o.earlyPrice)}）` : ''}`, o.free ? '名額有限，送出報名即保留名額。' : '名額有限，報名付款完成即保留名額。'].join('\n').replace(/^\n+/, '');
       return { title: o.title, category: cat('課程活動'), body, cover: Object.assign({ type: 'planet', style: 'custom1', url: '' }, o.cover || {}), btnLabel: '看課程', btnTarget: '#/events/' + o.slug, unpublishAt: lastEnd };
     }
     if (kind === 'plan') return { title: o.name, category: cat('公告'), body: [o.tagline || '', '', `費用：${U.money(o.price)}・${o.durationMinutes || ''} 分鐘`].join('\n').trim(), cover: { type: 'planet', style: o.style || 'custom1', url: '' }, btnLabel: '立即預約', btnTarget: '#/book?plan=' + encodeURIComponent(o.planId), unpublishAt: '' };
@@ -5793,10 +6021,10 @@ Object.assign(Admin, {
     let evs = [], plans = [], qz = [];
     try { [evs, plans, qz] = await Promise.all([api.call('adminGetEvents').then(x => x.items || []), this.plansCached().then(x => x.plans || []), api.call('adminGetQuiz').then(x => x.templates || []).catch(() => [])]); } catch (e) { return errToast(e); }
     const T = U.today();
-    evs = evs.filter(e => e.state !== 'draft' && (e.sessions || []).some(z => !z.cancelled && !['ended', 'cancelled'].includes(z.state)));
+    evs = evs.filter(e => e.state !== 'draft' && (e.regMode === 'ext' ? e.status !== 'ended' : (e.sessions || []).some(z => !z.cancelled && !['ended', 'cancelled'].includes(z.state))));
     plans = plans.filter(p => p.enabled !== false && p.enabled !== 'FALSE');
     qz = qz.filter(q => !['draft', 'closed', 'ended'].includes(q.status));
-    const L = { ev: evs.map(e => [e.eventId, e.title, (e.next && e.next.when ? e.next.when : '') + (e.next && e.next.modeLabel ? '・' + e.next.modeLabel : ''), (e.cover || {}).style]), plan: plans.map(p => [p.planId, p.name, `${U.money(p.price)}・${p.durationMinutes || ''} 分鐘`, p.style]), quiz: qz.map(q => [q.templateId, q.name, q.intro ? String(q.intro).slice(0, 30) : '', q.style]) };
+    const L = { ev: evs.map(e => [e.eventId, e.title, e.regMode === 'ext' ? '外部平台・' + evExtWhen(e) : (e.next && e.next.when ? e.next.when : '') + (e.next && e.next.modeLabel ? '・' + e.next.modeLabel : '') + (e.free ? '・免費' : ''), (e.cover || {}).style]), plan: plans.map(p => [p.planId, p.name, `${U.money(p.price)}・${p.durationMinutes || ''} 分鐘`, p.style]), quiz: qz.map(q => [q.templateId, q.name, q.intro ? String(q.intro).slice(0, 30) : '', q.style]) };
     let tab = 'ev';
     const list = () => L[tab].length ? L[tab].map(([id, t, sub, st]) => `<button type="button" class="nw-src" data-nsrc="${U.esc(id)}">${AUI.pl(st || 'custom1', 'nw-spl')}<span><b>${U.esc(t)}</b><small>${U.esc(sub || '')}</small></span><span class="tlink sm">帶入</span></button>`).join('') : `<p class="mnote">${tab === 'ev' ? '目前沒有還沒結束的課程活動' : tab === 'plan' ? '目前沒有上架的方案' : '目前沒有開放中的測驗'}</p>`;
     await modal({ title: '從網站帶入', ok: '取消', cls: 'nw-imp',
